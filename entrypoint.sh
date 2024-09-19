@@ -13,6 +13,6 @@ curl -fsSL "$SCRIPT_URL?$(date +%s)" -o "$SCRIPT_PATH"
 # Make the script executable
 chmod +x "$SCRIPT_PATH"
 
-# Run the script
+# Run the script 
 echo "Running the script..."
 exec "$SCRIPT_PATH"
