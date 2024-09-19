@@ -56,14 +56,13 @@ RUN \
     echo "Rebuilding simc executable with profile data for further optimization" && \
     make -C /app/SimulationCraft/engine clean && \
     make -C /app/SimulationCraft/engine release CXX=clang++ -j ${THREADS} THIN_LTO=1 LLVM_PGO_USE=./code.profdata OPTS+="-Os -mtune=generic" SC_DEFAULT_APIKEY=${APIKEY} && \
-	git -C /opt clone https://github.com/balu100/simc-aoe-profiles.git && \
-	cp -r -f /opt/simc-aoe-profiles/* /app/SimulationCraft/profiles/ && \
     # Cleanup dependencies
     echo "Cleaning up" && \
     apk del build_dependencies
-	
+
 # disable ptr to reduce build size
 # sed -i '' -e 's/#define SC_USE_PTR 1/#define SC_USE_PTR 0/g' engine/dbc.hpp
+
 # fresh image to reduce size
 FROM alpine:latest
 
@@ -77,13 +76,15 @@ RUN \
         libstdc++
 
 # get compiled simc and profiles
-
 COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
 COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
-RUN apk add git
-RUN mv /app/SimulationCraft/profiles/start.sh /app/SimulationCraft
+
+WORKDIR /app/SimulationCraft
+
+RUN wget /app/SimulationCraft/start.sh
 RUN chmod +x /app/SimulationCraft/start.sh
+
 VOLUME /opt/outside
 WORKDIR /app/SimulationCraft
-ENTRYPOINT ["/bin/ash", "/app/SimulationCraft/start.sh"]
 
+ENTRYPOINT ["/bin/ash", "/app/SimulationCraft/start.sh"]
