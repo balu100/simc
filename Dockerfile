@@ -79,10 +79,15 @@ RUN \
 COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
 COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
 
+# Install curl to download the script
+RUN apk add --no-cache curl
+
+# Create directory
 WORKDIR /app/SimulationCraft
 
-RUN wget https://raw.githubusercontent.com/balu100/simc-aoe-profiles/main/start.sh
-RUN chmod +x start.sh
-VOLUME /opt/outside
+# Copy the entrypoint script into the container
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/bin/ash", "/app/SimulationCraft/start.sh"]
+# Set the entrypoint to the entrypoint script
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
