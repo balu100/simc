@@ -80,6 +80,7 @@ RUN \
 
 COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
 COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
+RUN apk add git
 RUN mv /app/SimulationCraft/profiles/start.sh /app/SimulationCraft
 RUN chmod +x /app/SimulationCraft/start.sh
 VOLUME /opt/outside
