@@ -84,6 +84,7 @@ RUN apk add --no-cache curl
 
 # Create directory
 WORKDIR /app/SimulationCraft
+VOLUME /opt/outside
 
 # Copy the entrypoint script into the container
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
