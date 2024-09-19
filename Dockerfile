@@ -81,10 +81,8 @@ COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
 
 WORKDIR /app/SimulationCraft
 
-RUN wget /app/SimulationCraft/start.sh
-RUN chmod +x /app/SimulationCraft/start.sh
-
+RUN wget https://raw.githubusercontent.com/balu100/simc-aoe-profiles/main/start.sh
+RUN chmod +x start.sh
 VOLUME /opt/outside
-WORKDIR /app/SimulationCraft
 
 ENTRYPOINT ["/bin/ash", "/app/SimulationCraft/start.sh"]
