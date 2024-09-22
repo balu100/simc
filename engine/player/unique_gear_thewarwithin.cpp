@@ -1060,6 +1060,7 @@ void spymasters_web( special_effect_t& effect )
   };
 
   effect.disable_buff();
+  effect.has_use_buff_override = true;
   effect.execute_action = create_proc_action<spymasters_web_t>( "spymasters_web", effect, stacking_buff, use_buff );
 }
 
@@ -1165,14 +1166,17 @@ void aberrant_spellforge( special_effect_t& effect )
   // all proccing abilities.
   effect.player->callbacks.register_callback_trigger_function( equip->spell_id,
       dbc_proc_callback_t::trigger_fn_type::CONDITION,
-      [ id = empowered->id() ]( const dbc_proc_callback_t*, action_t* a, const action_state_t* ) {
-        return a->data().id() == id;
+      [ id = empowered->id() ]( const dbc_proc_callback_t*, action_t* a, const action_state_t* s ) {
+        return s->result_amount && a->data().id() == id;
       } );
 
   effect.player->callbacks.register_callback_execute_function( equip->spell_id,
       [ damage, empowerment ]( const dbc_proc_callback_t*, action_t* a, const action_state_t* s ) {
-        damage->execute_on_target( s->target );
-        empowerment->expire( a );
+        if ( empowerment->check() )
+        {
+          damage->execute_on_target( s->target );
+          empowerment->expire( a );
+        }
       } );
 
   auto cb = new dbc_proc_callback_t( effect.player, *equip );
@@ -1373,6 +1377,7 @@ void sikrans_endless_arsenal( special_effect_t& effect )
     }
   };
 
+  effect.has_use_damage_override = true;
   effect.execute_action = create_proc_action<sikrans_endless_arsenal_t>( "sikrans_endless_arsenal", effect, data );
 }
 
@@ -2858,6 +2863,7 @@ void high_speakers_accretion( special_effect_t& effect )
     }
   };
 
+  effect.has_use_damage_override = true;
   effect.execute_action = create_proc_action<high_speakers_accretion_t>( "high_speakers_accretion", effect );
 }
 
@@ -3077,6 +3083,7 @@ void mereldars_toll( special_effect_t& effect )
     }
   };
 
+  effect.has_use_damage_override = true;
   effect.execute_action = create_proc_action<mereldars_toll_t>( "mereldars_toll", effect, data );
 }
 
@@ -3338,6 +3345,7 @@ void twin_fang_instruments( special_effect_t& effect )
     }
   };
 
+  effect.has_use_damage_override = true;
   effect.execute_action = create_proc_action<twin_fang_instruments_t>( "twin_fang_instruments", effect, data );
 }
 
@@ -4557,6 +4565,9 @@ void candle_confidant( special_effect_t& effect )
 // 440235 stun, NYI
 void concoction_kiss_of_death( special_effect_t& effect )
 {
+  if ( unique_gear::create_fallback_buffs( effect, { "concoction_kiss_of_death" } ) )
+    return;
+
   struct concoction_kiss_of_death_buff_t : public stat_buff_t
   {
     concoction_kiss_of_death_buff_t( player_t* p, std::string_view n, const spell_data_t* s, const item_t* i )
@@ -5720,7 +5731,7 @@ void register_special_effects()
   register_special_effect( 455432, items::shining_arathor_insignia );
   register_special_effect( 455451, items::quickwick_candlestick );
   register_special_effect( 455435, items::candle_confidant );
-  register_special_effect( 435493, items::concoction_kiss_of_death );
+  register_special_effect( 435493, items::concoction_kiss_of_death, true );
   register_special_effect( 435473, items::everburning_lantern );
   register_special_effect( 455484, items::detachable_fang );
   register_special_effect( 459222, items::scroll_of_momentum, true );
