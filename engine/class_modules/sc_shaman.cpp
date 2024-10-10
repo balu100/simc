@@ -663,6 +663,10 @@ public:
     unsigned ancient_fellowship_positive = 0U;
     unsigned ancient_fellowship_total = 0U;
 
+    // Routine Communication Deck-of-Cards RNG parametrization
+    unsigned routine_communication_positive = 0U;
+    unsigned routine_communication_total = 0U;
+
     // Thunderstrike Ward Uniform RNG proc chance
     // TODO: Double check for CL. A ~5h LB test resulted in a ~30% chance.
     double thunderstrike_ward_proc_chance = 0.3;
@@ -1069,6 +1073,7 @@ public:
 
     shuffled_rng_t* icefury;
     shuffled_rng_t* ancient_fellowship;
+    shuffled_rng_t* routine_communication;
   } rng_obj;
 
   // Cached pointer for ascendance / normal white melee
@@ -3575,18 +3580,18 @@ struct fire_elemental_t : public primal_elemental_t
 
 struct storm_elemental_t : public primal_elemental_t
 {
-  struct tempest_aoe_t : public pet_spell_t<storm_elemental_t>
+  struct stormfury_aoe_t : public pet_spell_t<storm_elemental_t>
   {
     int tick_number   = 0;
     double damage_amp = 0.0;
 
-    tempest_aoe_t( storm_elemental_t* player, util::string_view options )
-      : super( player, "tempest_aoe", player->find_spell( 269005 ), options )
+    stormfury_aoe_t( storm_elemental_t* player, util::string_view options )
+      : super( player, "stormfury_aoe", player->find_spell( 269005 ), options )
     {
       aoe        = -1;
       background = true;
 
-      // parent spell (tempest_t) has the damage increase percentage
+      // parent spell (stormfury_t) has the damage increase percentage
       damage_amp = player->o()->find_spell( 157375 )->effectN( 2 ).percent();
     }
 
@@ -3598,15 +3603,15 @@ struct storm_elemental_t : public primal_elemental_t
     }
   };
 
-  struct tempest_t : public pet_spell_t<storm_elemental_t>
+  struct stormfury_t : public pet_spell_t<storm_elemental_t>
   {
-    tempest_aoe_t* breeze = nullptr;
+    stormfury_aoe_t* breeze = nullptr;
 
-    tempest_t( storm_elemental_t* player, util::string_view options )
-      : super( player, "tempest", player->find_spell( 157375 ), options )
+    stormfury_t( storm_elemental_t* player, util::string_view options )
+      : super( player, "stormfury", player->find_spell( 157375 ), options )
     {
       channeled   = true;
-      tick_action = breeze = new tempest_aoe_t( player, options );
+      tick_action = breeze = new stormfury_aoe_t( player, options );
     }
 
     void tick( dot_t* d ) override
@@ -3647,7 +3652,7 @@ struct storm_elemental_t : public primal_elemental_t
   };
 
   buff_t* call_lightning;
-  cooldown_t* tempest_cd;
+  cooldown_t* stormfury_cd;
 
   storm_elemental_t( shaman_t* owner, elemental type_, elemental_variant variant_ )
     : primal_elemental_t( owner, type_, variant_ ), call_lightning( nullptr )
@@ -3665,7 +3670,7 @@ struct storm_elemental_t : public primal_elemental_t
         break;
     }
 
-    tempest_cd = get_cooldown( "tempest" );
+    stormfury_cd = get_cooldown( "stormfury" );
   }
 
   void create_default_apl() override
@@ -3675,7 +3680,7 @@ struct storm_elemental_t : public primal_elemental_t
     action_priority_list_t* def = get_action_priority_list( "default" );
     if ( type == elemental::PRIMAL_STORM )
     {
-      def->add_action( "tempest,if=buff.call_lightning.remains>=10" );
+      def->add_action( "stormfury,if=buff.call_lightning.remains>=10" );
     }
     def->add_action( "call_lightning" );
     def->add_action( "wind_gust" );
@@ -3703,8 +3708,8 @@ struct storm_elemental_t : public primal_elemental_t
 
   action_t* create_action( util::string_view name, util::string_view options_str ) override
   {
-    if ( name == "tempest" )
-      return new tempest_t( this, options_str );
+    if ( name == "stormfury" )
+      return new stormfury_t( this, options_str );
     if ( name == "call_lightning" )
       return new call_lightning_t( this, options_str );
     if ( name == "wind_gust" )
@@ -3719,10 +3724,13 @@ struct storm_elemental_t : public primal_elemental_t
 
     if ( type == elemental::PRIMAL_STORM )
     {
-      tempest_cd->reset( false );
+      stormfury_cd->reset( false );
     }
 
-    o()->buff.wind_gust->reset();
+    if ( !o()->is_ptr() || variant == elemental_variant::GREATER )
+    {
+      o()->buff.wind_gust->reset();
+    }
   }
 
   void dismiss( bool expired ) override
@@ -5928,6 +5936,11 @@ struct chain_lightning_t : public chained_base_t
         {
           p()->buff.icefury_cast->trigger();
         }
+
+        if ( p()->talent.routine_communication.ok() && p()->rng_obj.routine_communication->trigger() )
+        {
+          p()->summon_ancestor();
+        }
       }
     }
 
@@ -6788,9 +6801,9 @@ struct lava_burst_t : public shaman_spell_t
       p()->buff.icefury_cast->trigger();
     }
 
-    if ( p()->talent.routine_communication.ok() && exec_type == spell_variant::NORMAL )
+    if ( p()->talent.routine_communication.ok() && p()->rng_obj.routine_communication->trigger() && exec_type == spell_variant::NORMAL )
     {
-      p()->summon_ancestor( p()->talent.routine_communication->effectN( 2 ).percent() );
+      p()->summon_ancestor();
     }
 
     // [BUG] 2024-08-23 Supercharge works on Lava Burst in-game
@@ -7001,6 +7014,11 @@ struct lightning_bolt_t : public shaman_spell_t
         {
           p()->buff.icefury_cast->trigger();
         }
+      }
+
+      if ( p()->is_ptr() && p()->talent.routine_communication.ok() && p()->rng_obj.routine_communication->trigger() )
+      {
+        p()->summon_ancestor();
       }
     }
 
@@ -7290,6 +7308,17 @@ struct elemental_blast_t : public shaman_spell_t
       }
     }
 
+    // While I still think this interaction shouldn't exist (proc of proc) it
+    // certainly does. So here we go with an implemented bug.
+    if ( p()->bugs && 
+         p()->is_ptr() && 
+         p()->specialization() == SHAMAN_ELEMENTAL && 
+         exec_type == spell_variant::FUSION_OF_ELEMENTS ) 
+    {
+        // Elemental Blast can trigger DRE on PTR
+        p()->trigger_deeply_rooted_elements( execute_state );
+    }
+
     // [BUG] 2024-08-23 Supercharge works on Elemental Blast in-game
     if ( p()->bugs && exec_type == spell_variant::NORMAL &&
          p()->specialization() == SHAMAN_ENHANCEMENT &&
@@ -7362,8 +7391,15 @@ struct icefury_t : public shaman_spell_t
         p()->buff.icefury_dmg->trigger( as<int>( p()->buff.icefury_dmg->data().effectN( 4 ).base_value() ) );
     }
 
+    p()->buff.flux_melting->trigger();
+
     p()->buff.fusion_of_elements_nature->trigger();
     p()->buff.fusion_of_elements_fire->trigger();
+
+    if ( p()->is_ptr() && p()->talent.routine_communication.ok() && p()->rng_obj.routine_communication->trigger() )
+    {
+      p()->summon_ancestor();
+    }
 
     p()->buff.icefury_cast->decrement();
   }
@@ -8497,6 +8533,11 @@ struct frost_shock_t : public shaman_spell_t
     {
       p()->proc.surge_of_power_wasted->occur();
       p()->buff.surge_of_power->decrement();
+    }
+
+    if ( p()->is_ptr() && p()->talent.routine_communication.ok() && p()->rng_obj.routine_communication->trigger() )
+    {
+      p()->summon_ancestor();
     }
   }
 
@@ -10762,6 +10803,9 @@ void shaman_t::create_options()
   add_option( opt_uint( "shaman.ancient_fellowship_positive", options.ancient_fellowship_positive, 0U, 100U ) );
   add_option( opt_uint( "shaman.ancient_fellowship_total", options.ancient_fellowship_total, 0U, 100U ) );
 
+  add_option( opt_uint( "shaman.routine_communication_positive", options.routine_communication_positive, 0U, 100U ) );
+  add_option( opt_uint( "shaman.routine_communication_total", options.routine_communication_total, 0U, 100U ) );
+
   add_option( opt_float( "shaman.thunderstrike_ward_proc_chance", options.thunderstrike_ward_proc_chance,
                          0.0, 1.0 ) );
 
@@ -11477,7 +11521,11 @@ void shaman_t::summon_lesser_elemental( elemental type, timespan_t override_dura
       elemental_buff = buff.lesser_storm_elemental;
       spawner_ptr = &( pet.lesser_storm_elemental );
 
-      buff.wind_gust->expire();
+      if ( !is_ptr() )
+      {
+        // starting in 11.0.5 stacks no longer drop if the lesser elemental of Echo of the Elementals is summoned
+        buff.wind_gust->expire();
+      }
       pet.lesser_fire_elemental.despawn();
       buff.lesser_fire_elemental->expire();
       break;
@@ -12853,20 +12901,30 @@ void shaman_t::init_rng()
   if ( options.ancient_fellowship_positive == 0 ) {
     options.ancient_fellowship_positive = as<unsigned>( talent.ancient_fellowship->effectN( 3 ).base_value() );
   }
-
   if ( options.ancient_fellowship_total == 0 ) {
     options.ancient_fellowship_total = as<unsigned>( talent.ancient_fellowship->effectN( 2 ).base_value() );
   }
   rng_obj.ancient_fellowship =
     get_shuffled_rng( "ancient_fellowship", options.ancient_fellowship_positive, options.ancient_fellowship_total );
+
   if ( options.icefury_positive == 0 ) {
     options.icefury_positive = as<unsigned>( talent.icefury->effectN( 1 ).base_value() );
   }
-
   if ( options.icefury_total == 0 ) {
     options.icefury_total = as<unsigned>( talent.icefury->effectN( 2 ).base_value() );
   }
   rng_obj.icefury = get_shuffled_rng( "icefury", options.icefury_positive, options.icefury_total );
+
+  if ( options.routine_communication_positive == 0 ) {
+    options.routine_communication_positive = as<unsigned>( talent.routine_communication->effectN( 5 ).base_value() );
+  }
+  if ( options.routine_communication_total == 0 ) {
+    // This is effect 6 based on live data. PTR data is confusing in comparison.
+    options.routine_communication_total = as<unsigned>( talent.routine_communication->effectN( 6 ).base_value() );
+  }
+  rng_obj.routine_communication =
+    get_shuffled_rng( "routine_communication", options.routine_communication_positive, options.routine_communication_total );
+
 }
 
 // shaman_t::init_items =====================================================
@@ -12890,7 +12948,7 @@ void shaman_t::init_special_effects()
 {
   callbacks.register_callback_trigger_function(
       452030, dbc_proc_callback_t::trigger_fn_type::CONDITION,
-      [ id = 51505 ]( const dbc_proc_callback_t*, action_t* a, action_state_t*) {
+      [ id = 51505U ]( const dbc_proc_callback_t*, action_t* a, action_state_t*) {
         if ( a->data().id() == id )
         {
           lava_burst_t* lvb = debug_cast<lava_burst_t*>(a);

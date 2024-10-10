@@ -4483,9 +4483,21 @@ struct abomination_pet_t : public death_knight_pet_t
     {
     }
 
+    void execute() override
+    {
+      // Does not check for Frost Fever or Blood Plauge if Superstrain is talented, only reapplies if VP isnt ticking.
+      for ( auto& t : dk()->sim->target_non_sleeping_list )
+      {
+        death_knight_td_t* td = dk()->get_target_data( t );
+        if ( !td->dot.virulent_plague->is_ticking() )
+          pet()->disease_cloud->execute_on_target( t );
+      }
+      auto_attack_melee_t::execute();
+    }
+
     void impact( action_state_t* state ) override
     {
-      pet_melee_attack_t::impact( state );
+      auto_attack_melee_t::impact( state );
       if ( state->result_amount > 0 )
       {
         pet()->dk()->trigger_festering_wound( state, 1, pet()->dk()->procs.fw_abomination );
@@ -4510,26 +4522,10 @@ struct abomination_pet_t : public death_knight_pet_t
     return RESOURCE_NONE;
   }
 
-  void arise() override
-  {
-    death_knight_pet_t::arise();
-    for ( auto& t : sim->target_non_sleeping_list )
-    {
-      disease_cloud->execute_on_target( t );
-    }
-  }
-
   void create_actions() override
   {
     death_knight_pet_t::create_actions();
     disease_cloud = get_action<disease_cloud_t>( "disease_cloud", this );
-
-    sim->target_non_sleeping_list.register_callback( [ & ]( player_t* t ) {
-      if ( !t->is_enemy() || dk()->pets.abomination.active_pet() == nullptr )
-        return;
-
-      disease_cloud->execute_on_target( t );
-    } );
   }
 
   attack_t* create_main_hand_auto_attack() override
@@ -4771,7 +4767,7 @@ struct death_knight_action_t : public parse_action_effects_t<Base>
     }
 
     if ( p()->talent.deathbringer.reapers_mark.ok() && this->data().id() != p()->spell.reapers_mark_explosion->id() &&
-         this->data().id() != 66198 )  // TODO-TWW verify if offhand obliterate bug is fixed
+         this->data().id() != 66198 && this->data().id() != 439539 )  // TODO-TWW verify if offhand obliterate bug is fixed
     {
       death_knight_td_t* td = get_td( s->target );
       if ( td->debuff.reapers_mark->check() )
@@ -5898,8 +5894,11 @@ struct melee_t : public death_knight_melee_attack_t
   {
     timespan_t t = death_knight_melee_attack_t::execute_time();
 
-    if ( first )
-      return ( weapon->slot == SLOT_OFF_HAND ) ? ( sync_weapons ? std::min( t * 0.5, 0_ms ) : t * 0.5 ) : 0_ms;
+    if ( first && !sync_weapons )
+    {
+      timespan_t delay = p()->rng().range( 10_ms, t * 0.5 );
+      return ( weapon->slot == SLOT_OFF_HAND ) ? delay : 0_ms;
+    }
     else
       return t;
   }
@@ -6408,8 +6407,7 @@ public:
 struct undeath_dot_t final : public death_knight_spell_t
 {
   undeath_dot_t( std::string_view name, death_knight_t* p )
-    : death_knight_spell_t( name, p, p->pet_spell.undeath_dot ),
-      sqrt_targets( p->pet_spell.undeath_dot->effectN( 2 ).base_value() )
+    : death_knight_spell_t( name, p, p->pet_spell.undeath_dot )
   {
     background = true;
     may_miss = may_dodge = may_parry = false;
@@ -6420,11 +6418,14 @@ struct undeath_dot_t final : public death_knight_spell_t
   {
     death_knight_spell_t::tick( d );
     auto td = p()->get_target_data( d->target );
-    td->dot.undeath->increment( 1 );
-  }
+    auto cd = p()->cooldown.undeath_spread->get_cooldown( d->target );
 
-private:
-  double sqrt_targets;
+    if ( !cd->down() )
+    {
+      td->dot.undeath->increment( 1 );
+      cd->start();
+    }
+  }
 };
 
 struct trollbanes_icy_fury_t final : public death_knight_spell_t
@@ -11934,9 +11935,7 @@ void death_knight_t::summon_rider( timespan_t duration, bool random )
 {
   int n = 0;
   if ( random )
-  {
     n = get_random_rider();
-  }
   else
     n = rider_of_the_apocalypse::ALL_RIDERS;
 
@@ -12003,34 +12002,37 @@ void death_knight_t::sort_undeath_targets( std::vector<player_t*> tl )
 void death_knight_t::trigger_whitemanes_famine( player_t* main_target )
 {
   auto td = get_target_data( main_target );
-  td->dot.undeath->increment( as<int>( pet_spell.undeath_dot->effectN( 3 ).base_value() ) );
   auto cd = cooldown.undeath_spread->get_cooldown( main_target );
 
-  if ( !cd->down() && sim->target_non_sleeping_list.size() > 1 )
+  if ( !cd->down() )
   {
-    std::vector<player_t*> tl = undeath_tl;
-    auto it                   = range::find( tl, main_target );
-    if ( it != tl.end() )
-    {
-      tl.erase( it );
-    }
-
-    player_t* undeath_target = tl[ 0 ];
-
-    auto undeath_td = get_target_data( undeath_target );
-
-    if ( undeath_td->dot.undeath->is_ticking() )
-    {
-      undeath_td->dot.undeath->increment( as<int>( pet_spell.undeath_dot->effectN( 3 ).base_value() ) );
-    }
-    else
-    {
-      td->dot.undeath->copy( undeath_target, DOT_COPY_CLONE );
-    }
-
+    td->dot.undeath->increment( as<int>( pet_spell.undeath_dot->effectN( 3 ).base_value() ) );
     cd->start();
 
-    std::rotate( undeath_tl.begin(), undeath_tl.begin() + 1, undeath_tl.end() );
+    if ( sim->target_non_sleeping_list.size() > 1 )
+    {
+      std::vector<player_t*> tl = undeath_tl;
+      auto it                   = range::find( tl, main_target );
+      if ( it != tl.end() )
+      {
+        tl.erase( it );
+      }
+
+      player_t* undeath_target = tl[ 0 ];
+
+      auto undeath_td = get_target_data( undeath_target );
+
+      if ( undeath_td->dot.undeath->is_ticking() )
+      {
+        undeath_td->dot.undeath->increment( as<int>( pet_spell.undeath_dot->effectN( 3 ).base_value() ) );
+      }
+      else
+      {
+        td->dot.undeath->copy( undeath_target, DOT_COPY_CLONE );
+      }
+
+      std::rotate( undeath_tl.begin(), undeath_tl.begin() + 1, undeath_tl.end() );
+    }
   }
 }
 
@@ -12108,7 +12110,7 @@ void death_knight_t::trigger_infliction_of_sorrow( player_t* target, bool is_vam
     // The talent itself references 100% damage done, and it's stored in the below effect
     // mod = talent.sanlayn.infliction_of_sorrow->effectN( 1 ).percent();
     // However, the buff that is on the player still has 200% set, and in game testing shows the explosion to be 200%
-    mod = spell.infliction_of_sorrow_buff->effectN( 1 ).percent();
+    mod = modified_spell.infliction_of_sorrow->effectN( 1 ).percent();
 
     buffs.infliction_of_sorrow->expire();
     if ( disease_td->is_ticking() )

@@ -908,7 +908,7 @@ static constexpr auto _aura_interrupt_strings = util::make_static_map<unsigned, 
   { 53, "Proc or Periodic Attack"          },
   { 54, "Challenge Mode Start"             },
   { 55, "Encounter Start"                  },
-  { 56, "Ecnounter End"                    },
+  { 56, "Encounter End"                    },
   { 57, "Release Empower"                  },
 } );
 
@@ -1179,6 +1179,7 @@ static constexpr auto _effect_subtype_strings = util::make_static_map<unsigned, 
   { 185, "Modify Attacker Ranged Hit Chance"                 },
   { 186, "Modify Attacker Spell Hit Chance"                  },
   { 187, "Modify Attacker Melee Crit Chance"                 },
+  { 188, "Modify UI UnitInRange"                             },
   { 189, "Modify Rating"                                     },
   { 192, "Modify Ranged and Melee Haste%"                    },
   { 193, "Modify All Haste%"                                 },
@@ -2035,7 +2036,6 @@ std::string spell_info::to_str( const dbc_t& dbc, const spell_data_t* spell, int
     std::vector<std::string> class_str;
     std::vector<player_e> exclude;
     std::vector<int> unknown;
-    bool pet_ability = false;
 
     if ( dbc.is_specialization_ability( spell->id() ) )
     {

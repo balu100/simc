@@ -1494,7 +1494,7 @@ class SpellDataGenerator(DataGenerator):
          # 11.0 The War Within ================================================
          451916, 451917, 451918, 451920, 451921, # earthen racial well fed buff
          206150, 461904, 461910, 462661, # new M+ affixes
-         462513, # severed strands weekly raid buff
+         462513, 462517, # severed strands weekly raid buff
          443585, # fateweaved needle
          452279, # aberrant spellforge
          448621, 448643, # void reaper's chime
@@ -1521,6 +1521,7 @@ class SpellDataGenerator(DataGenerator):
          455441, 455454, 455455, 455456, #Unstable Power Core Mastery Crit Haste Vers
          455521, 455522, 457627, # Woven Dawn Tailoring Set
          449441, # Fury of the Stormrook Set
+         469917, 469920, # golem gearbox
         ),
 
         # Warrior:
