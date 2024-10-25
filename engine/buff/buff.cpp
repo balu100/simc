@@ -2222,6 +2222,39 @@ void buff_t::extend_duration_or_trigger( timespan_t duration, player_t* p )
   }
 }
 
+// Reschedules the time of the next tick. Use this function only as a last resort. Try using a custom tick_time_callback
+// instead.
+void buff_t::reschedule_tick( timespan_t delta )
+{
+  if ( delta == 0_s )
+    return;
+
+  if ( !tick_event )
+    return;
+
+  timespan_t new_remains = tick_event->remains() + delta;
+  if ( new_remains < 0_s )
+  {
+    assert( false && "Attempted to reschedule a tick before the current time." );
+    return;
+  }
+
+  if ( delta < 0_s )
+  {
+    int old_stacks   = debug_cast<tick_t*>( tick_event )->current_stacks;
+    double old_value = debug_cast<tick_t*>( tick_event )->current_value;
+
+    event_t::cancel( tick_event );
+
+    tick_event = make_event<tick_t>( *sim, this, new_remains, old_value, old_stacks );
+    debug_cast<tick_t*>( tick_event )->start_time += delta;
+  }
+  else
+  {
+    tick_event->reschedule( new_remains );
+  }
+}
+
 void buff_t::start( int stacks, double value, timespan_t duration )
 {
   if ( _max_stack == 0 )
@@ -2586,7 +2619,7 @@ bool buff_t::can_trigger( action_t* action ) const
   if ( is_fallback || !action->data().ok() || !trigger_data->ok() )
     return false;
 
-  if ( action->proc && !trigger_data->flags( spell_attribute::SX_CAN_PROC_FROM_PROCS ) )
+  if ( action->proc && !action->not_a_proc && !trigger_data->flags( spell_attribute::SX_CAN_PROC_FROM_PROCS ) )
     return false;
 
   if ( trigger_data->flags( spell_attribute::SX_ONLY_PROC_FROM_CLASS_ABILITIES ) && !action->allow_class_ability_procs )
@@ -2609,7 +2642,7 @@ bool buff_t::can_expire( action_t* action ) const
     return false;
 
   // TODO: check if trigger spell having CAN_PROC_FROM_PROCS is sufficient to allow the buff to consume
-  if ( action->proc && !data().flags( spell_attribute::SX_CAN_PROC_FROM_PROCS ) )
+  if ( action->proc && !action->not_a_proc && !data().flags( spell_attribute::SX_CAN_PROC_FROM_PROCS ) )
     return false;
 
   if ( data().flags( spell_attribute::SX_ONLY_PROC_FROM_CLASS_ABILITIES ) && !action->allow_class_ability_procs )

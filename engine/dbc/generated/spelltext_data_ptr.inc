@@ -1,4 +1,4 @@
-// Spell text, wow build 11.0.5.56865
+// Spell text, wow build 11.0.5.57171
 static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   {     17, "Shields an ally for $d, absorbing $s1 damage.", "Absorbs $w1 damage.", 0 },
   {     53, "Stab the target, causing ${$s2*$<mult>} Physical damage. Damage increased by $s4% when you are behind your target$?s319949[, and critical strikes apply Find Weakness for $319949s1 sec][].\r\n\r\n|cFFFFFFFFAwards $s3 combo $lpoint:points;.|r", 0, 0 },
@@ -1291,7 +1291,6 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   {  36482, "Increases Physical damage taken by the target by $s1% for $d. This effect stacks.", "Physical damage taken increased by $s1%.", 0 },
   {  36483, "Reduces damage taken by Fire and Shadow spells by $s1% for $D.", "Damage taken by Fire and Shadow spells reduced by $s1%.", 0 },
   {  36488, "Friendly targets of the caster's heals gain an effect that reduces the damage taken by Fire and Shadow spells by $36483s1% for $36483d.", 0, 0 },
-  {  36554, "Step through the shadows to appear behind your target and gain $s2% increased movement speed for $d.$?s137035|s137037[\r\n\r\nIf you already know $@spellname36554, instead gain $394931s1 additional $Lcharge:charges; of $@spellname36554.][]", "Movement speed increased by $s2%.", 0 },
   {  37173, "Your special attacks have a chance to give you $37174s1 critical strike for $37174d.", 0, 0 },
   {  37174, "You gain an additional $s1 critical strike.", "$s1 critical strike.", 0 },
   {  37197, "Each time you cast a spell, there is chance you will gain $37198s1 spell power.", 0, 0 },
@@ -4482,7 +4481,6 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 138895, "Haste increased by $s1 for $d.", "Haste increased by $s1.", 0 },
   { 138896, "Your periodic damage spells have a chance to grant $138898s1 Intellect for $138898d.  (Approximately ${$procrppm}.2 procs per minute)", 0, 0 },
   { 138898, "Intellect increased by $s1 for $d.", "Intellect increased by $s1.", 0 },
-  { 138916, "$@spelldesc36554", 0, 0 },
   { 138924, "Your heals have a chance to grant the target a shield absorbing $140380s1 damage, lasting $140380d. (Approximately ${$procrppm}.2 procs per minute, ${$proccooldown} sec cooldown)", 0, 0 },
   { 138925, "Consumes all Blessings of Zuldazar to shield the target, absorbing $s1 damage per Blessing consumed.  Lasts $d.", "Absorbs $w1 damage.", 0 },
   { 138938, "Increases Agility by $s1 for $d.", "Increases Agility by $s1.", 0 },
@@ -13304,7 +13302,6 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 305314, "$@spelldesc303133", 0, 0 },
   { 305315, "$@spelldesc303133", 0, 0 },
   { 305331, "$@spelldesc303133", 0, 0 },
-  { 305334, "$@spelldesc36554", "Movement speed increased by $2%.", 0 },
   { 305350, "$?a137008[$@spellname202727]?a137006[$@spellname305392]?a137007[$@spellname223829]?a212612[$@spellname235893]?a212613[$@spellname205625]?a137013[$@spellname236696]?a137011[$@spellname236696]?a137010[$@spellname202110]?a137012[$@spellname203399]?a137015[$@spellname236776]?a137016[$@spellname236776]?a137017[$@spellname236776]?a137021[$@spellname198062]?a137019[$@spellname198062]?a137020[$@spellname198062]?a137023[$@spellname202126]?a137024[$@spellname202424]?a137025[$@spellname287771][]", 0, "Azerite Essence" },
   { 305352, "$?a137029[$@spellname210294]?a137028[$@spellname199542]?a137027[$@spellname305394]?a137032[$@spellname196162]?a137031[$@spellname213610]?a137033[$@spellname108968]?a137037[$@spellname197000]?a137036[$@spellname197000]?a137035[$@spellname197000]?a137040[$@spellname305483]?a137041[$@spellname204366]?a137039[$@spellname290254]?a137043[$@spellname212371]?a137044[$@spellname212295]?a137046[$@spellname285933]?a137049[$@spellname198817]?a137050[$@spellname213857]?a137048[$@spellname199045][]", 0, "Azerite Essence" },
   { 305392, "Deals $204167s4 Frost damage to the target and reduces their movement speed by $204206m2% for $204206d.\r\n\r\nChill Streak bounces up to $m1 times between closest targets within $204165A1 yards.", 0, 0 },
@@ -26165,7 +26162,7 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 462479, "$@spelldesc462454", 0, 0 },
   { 462486, "Casting $?a455630[Surging Totem][Healing Rain] has a $s1% chance to activate Downpour, allowing you to cast Downpour within $462488d.\r\n\r\n$@spellicon207778 $@spellname207778\r\n$@spelldesc207778", 0, 0 },
   { 462488, "$@spelldesc462486", "Downpour can be cast!", 0 },
-  { 462513, "The Severed Threads lend you their aid, increasing your damage dealt & healing done while inside Nerub-ar Palace by $s1%.", "Damage dealt increased by $s1%.\r\nHealing and absorption effects increased by $s2%.", 0 },
+  { 462513, "The Severed Threads lend you their aid, increasing your damage dealt & healing done while inside Nerub-ar Palace by ${$w1}.2.", "Damage dealt increased by ${$w1}%\r\nHealing and absorption effects increased by ${$w1}%", 0 },
   { 462515, "$@spelldesc445707", "Critical damage dealt increased by $s1%.", 0 },
   { 462517, "The Severed Threads lend you their aid, increasing your damage dealt & healing done while inside Nerub-ar Palace.", 0, 0 },
   { 462568, "$@spelldesc462368", "Fire, Frost, and Nature damage taken reduced by $w1%.", 0 },
@@ -26173,7 +26170,7 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 462587, "Your critical heals have ${$s2+$s1}% effectiveness instead of the usual $s2%.", 0, 0 },
   { 462603, "$@spelldesc207778", 0, 0 },
   { 462620, "Causes the earth within $a1 yards of your target to tremble and break, dealing $<damage> Physical damage over $d and has a $77478s2% chance to knock the enemy down. Multiple uses of Earthquake may overlap.\r\n\r\n|cFFFFFFFFThis spell is cast at your target.|r", 0, 0 },
-  { 462661, "Blessed by the void, $s2% increased spell and ability cool down rate and increases healing received by $s1% for $d.", "$s2% increased spell and ability cool down rate.\r\n\r\nHealing received increased by $s1%.", 0 },
+  { 462661, "Blessed by the void, increases Versatility by $s1% and increases spell and ability cool down rate by $s2% for $d.", "Versatility increased by $s1%.\r\n\r\n$s2% increased spell and ability cool down rate.", 0 },
   { 462695, "Your next Chain Lightning$?s454009[, Tempest,][] or Lightning Bolt has $462725s1% reduced cast time after casting Earth Shock, Elemental Blast, or Earthquake. Can accumulate up to $462725u charges.", 0, 0 },
   { 462725, "$@spelldesc462695", "Reduces the cast time of your next Lightning Bolt$?s454009[, Tempest,][] or Chain Lightning by $s1%.", 0 },
   { 462742, "$@spelldesc462757", 0, 0 },
@@ -26302,7 +26299,9 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 467059, "Finishing move that dispatches the enemy, dealing damage per combo point:\r\n   1 point  : ${$m1*1} damage\r\n   2 points: ${$m1*2} damage\r\n   3 points: ${$m1*3} damage\r\n   4 points: ${$m1*4} damage\r\n   5 points: ${$m1*5} damage$?s193531|((s394320|s394321)&!s193531)[\r\n   6 points: ${$m1*6} damage][]$?s193531&(s394320|s394321)[\r\n   7 points: ${$m1*7} damage][]", 0, 0 },
   { 467263, "$@spelldesc114051", 0, 0 },
   { 467270, "Life Cocoon grants up to $s1 stacks of Mana Tea and applies $s2 stacks of Healing Elixir to its target.", 0, 0 },
+  { 467274, "Sundering grants you Hot Hand for 8 sec.\r\n\r\nWhile Hot Hand is active, Lava Lash casts Sundering at $s1% effectiveness. Sundering cast from this effect does not incapacitate.", 0, 0 },
   { 467281, "$@spelldesc122280", "$w1 Healing Elixir stored, which will heal for $428439s1% of your maximum health if brought below $s1% heatlh.", 0 },
+  { 467283, "Shatters a line of earth in front of you with your main hand weapon, causing ${$s1/$467274s1*100} Flamestrike damage.", "Incapacitated.", 0 },
   { 467293, "After casting Jadefire Stomp or Thunder Focus Tea, Ancient Teachings transfers an additional $388026s2% damage to healing for $388026d.\r\n\r\nWhile Jadefire Teachings is active, your Stamina is increased by $388026s1%.", 0, 0 },
   { 467306, "$@spelldesc445034", 0, 0 },
   { 467307, "Kick up a powerful gust of wind, dealing $468179s1 Nature damage in a $468179a1 yd cone to enemies in front of you, split evenly among them. Damage is increased by $s1% for each target hit, up to ${$s1*$s2}%.\r\n\r\nGrants Rushing Winds for $467341d, increasing Renewing Mist's healing by $467341s1%.", 0, 0 },
@@ -26331,6 +26330,7 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 467936, "Periodic damage from Black Arrow has a small chance to erupt in a burst of darkness, dealing $444269s1 Shadow damage to all enemies near the target. Damage reduced beyond $s1 targets.", 0, 0 },
   { 467941, "When $?c1[Kill Command][Aimed Shot] damages a target affected by Black Arrow, $s1% of the damage dealt is replicated to each other unit affected by Black Arrow.", 0, 0 },
   { 468019, "$@spelldesc467941", 0, 0 },
+  { 468037, "You attempt to finish off a wounded target, dealing $s1 Shadow damage.", 0, 0 },
   { 468074, "$@spelldesc466990", "Building up to a Withering Fire...", 0 },
   { 468075, "$@spelldesc466990", "During your next Bestial Wrath, darkness will overtake you.", 0 },
   { 468146, "When your Restoration heal over time effects are removed by enemies, they are replaced with Reactive Resin, healing an ally for $468152o1 over $468152d. Multiple stacks may overlap.", 0, 0 },
@@ -26527,11 +26527,13 @@ static const std::array<spelltext_data_t, 26525> __ptr_spelltext_data { {
   { 472304, "Increases Strength by $s1 for $d.", "Strength increased by $w1", 0 },
 } };
 
-// spelltext hotfix entries, wow build 11.0.5.56865
-static constexpr std::array<hotfix::client_hotfix_entry_t, 0> __ptr_spelltext_hotfix_data { {
+// spelltext hotfix entries, wow build 11.0.5.57171
+static constexpr std::array<hotfix::client_hotfix_entry_t, 2> __ptr_spelltext_hotfix_data { {
+  {  462661,  0, "Blessed by the void, $s2% increased spell and ability cool down rate and increases healing received by $s1% for $d.", "Blessed by the void, increases Versatility by $s1% and increases spell and ability cool down rate by $s2% for $d." },
+  {  462661,  1, "$s2% increased spell and ability cool down rate.\r\n\r\nHealing received increased by $s1%.", "Versatility increased by $s1%.\r\n\r\n$s2% increased spell and ability cool down rate." },
 } };
 
-// Spell description variables, wow build 11.0.5.56865
+// Spell description variables, wow build 11.0.5.57171
 static const std::array<spelldesc_vars_data_t, 609> __ptr_spelldesc_vars_data { {
   {      53, "$mult=${($max(0,$min($pl-10,10))*11+260)/370}" },
   {     120, "$arctic1=$?s31674[${1.01}][${1}]\r\n$arctic2=$?s31675[${1.02}][${$<arctic1>}]\r\n$arctic3=$?s31676[${1.03}][${$<arctic2>}]\r\n$arctic4=$?s31677[${1.04}][${$<arctic3>}]\r\n$arctic5=$?s31678[${1.05}][${$<arctic4>}]\r\n$piercing1=$?s11151[${1.02}][${1}]\r\n$piercing2=$?s12952[${1.04}][${$<piercing1>}]\r\n$piercing3=$?s12953[${1.06}][${$<piercing2>}]\r\n$mult=${$<arctic5>*$<piercing3>}" },
@@ -26738,7 +26740,7 @@ static const std::array<spelldesc_vars_data_t, 609> __ptr_spelldesc_vars_data { 
   {  260364, "$damage=${$cond($gt($SP,$AP),$SP*0.25,$AP*0.5)}" },
   {  260798, "$damage=${2.0*$260798s1}" },
   {  262627, "$percent=$?s63271[${$58877m1*1.4}][${$58877m1}]" },
-  {  263648, "$baseAbsorb=${10*$AP*$pctH}\r\n$fragmentAbsorb=${2*$AP*$pctH}" },
+  {  263648, "$baseAbsorb=${15*$AP*$pctH}\r\n$fragmentAbsorb=${4*$AP*$pctH}" },
   {  264057, "$demoMastery=$?s77219[${1+0.01*$77219m1}][${1}]\r\n$demoPassive=$?s137044[${1+0.01*$137044m3}][${1}]\r\n$damage=${.575*($SP*1)*$<demoMastery>*$<demoPassive>*(1+$@versadmg)}" },
   {  265931, "$mastery=$?s77220[${((100+$77220m3)/100)}][${1.00}]" },
   {  267964, "$demoMastery=$?s77219[${1+0.01*$77219m1}][${1}]\r\n$demoPassive=$?s137044[${1+0.01*$137044m3}][${1}]\r\n$damage=${.575*($SP*1)*$<demoMastery>*$<demoPassive>*(1+$@versadmg)}" },
@@ -27144,7 +27146,7 @@ static const std::array<spelldesc_vars_data_t, 609> __ptr_spelldesc_vars_data { 
   {  472302, "$rolemult=$?a137048|a137028|a137023|a137010|a212613|a137008|a137039|a137031|a137032|a137029|a137024|a137024|a356810|a137012[${0.66}.2][${1}]" },
 } };
 
-// spelldesc_vars hotfix entries, wow build 11.0.5.56865
+// spelldesc_vars hotfix entries, wow build 11.0.5.57171
 static constexpr std::array<hotfix::client_hotfix_entry_t, 0> __ptr_spelldesc_vars_hotfix_data { {
 } };
 

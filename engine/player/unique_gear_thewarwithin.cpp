@@ -242,9 +242,11 @@ custom_cb_t secondary_food( unsigned id, stat_e stat1, stat_e stat2 = STAT_NONE 
 
     auto buff = create_buff<consumable_buff_t<stat_buff_t>>( effect.player, effect.driver() );
 
+    // all single secondary stat food are minor foods. note that item tooltip for hearty versions are incorrect and do
+    // not apply the minor food multiplier.
     if ( stat2 == STAT_NONE )
     {
-      auto _amt = coeff->effectN( 4 ).average( effect );
+      auto _amt = coeff->effectN( 4 ).average( effect ) * coeff->effectN( 1 ).base_value() * 0.1;
       buff->add_stat( stat1, _amt );
     }
     else
@@ -1305,6 +1307,10 @@ void sikrans_endless_arsenal( special_effect_t& effect )
               d_shield->execute_on_target( s->target );
             }
           } );
+
+      e.player->callbacks.register_callback_trigger_function( d_driver->spell_id,
+        dbc_proc_callback_t::trigger_fn_type::CONDITION,
+        []( const dbc_proc_callback_t*, action_t*, const action_state_t* s ) { return s->target->is_enemy(); } );
 
       auto d_cb = new dbc_proc_callback_t( e.player, *d_driver );
       d_cb->activate_with_buff( d_stance );
@@ -4836,13 +4842,9 @@ void kaheti_shadeweavers_emblem( special_effect_t& effect )
 // TODO: confirm if rolemult gets implemented in-game
 void hand_of_justice( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-
   auto damage = create_proc_action<generic_proc_t>( "quick_strike", effect, 469928 );
   damage->base_dd_min = damage->base_dd_max = effect.driver()->effectN( 1 ).average( effect );
-  // TODO: currently not implemented in-game
-  // damage->base_multiplier *= role_mult( effect );
+  damage->base_multiplier *= role_mult( effect );
 
   effect.execute_action = damage;
 
@@ -4859,9 +4861,6 @@ void hand_of_justice( special_effect_t& effect )
 //  e1: damage coeff (unused?)
 void golem_gearbox( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-
   auto counter = create_buff<buff_t>( effect.player, effect.player->find_spell( 469917 ) )
     ->set_max_stack( as<int>( effect.driver()->effectN( 1 ).base_value() ) );
 
@@ -4871,14 +4870,10 @@ void golem_gearbox( special_effect_t& effect )
   damage->dual = damage->background = true;
   // TODO: confirm driver coeff is used and not damage spell coeff
   damage->base_dd_min = damage->base_dd_max = effect.driver()->effectN( 2 ).average( effect );
-  // TODO: currently not implemented in-game
-  // damage->base_multiplier *= role_mult( effect );
+  damage->base_multiplier *= role_mult( effect );
 
+  missile->add_child( damage );
   missile->impact_action = damage;
-  // use missile stat obj and remove unused damage stats obj
-  range::erase_remove( effect.player->stats_list, damage->stats );
-  delete damage->stats;
-  damage->stats = missile->stats;
 
   effect.proc_flags2_ = PF2_CRIT;
   effect.custom_buff = counter;
@@ -4891,13 +4886,9 @@ void golem_gearbox( special_effect_t& effect )
 // 469924 damage
 void doperels_calling_rune( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-
   auto damage = create_proc_action<generic_proc_t>( "ghostly_ambush", effect, effect.trigger() );
   damage->base_dd_min = damage->base_dd_max = effect.driver()->effectN( 1 ).average( effect );
-  // TODO: currently not implemented in-game
-  // damage->base_multiplier *= role_mult( effect );
+  damage->base_multiplier *= role_mult( effect );
 
   new dbc_proc_callback_t( effect.player, effect );
 }
@@ -4909,26 +4900,35 @@ void doperels_calling_rune( special_effect_t& effect )
 // ability to proc the int buff. on the other hand, some mana cost non-harmful spell will not proc.
 void burst_of_knowledge( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-
   auto int_buff = create_buff<stat_buff_t>( effect.player, effect.trigger(), effect.item );
 
   auto buff = create_buff<buff_t>( effect.player, effect.driver() )
-    ->set_cooldown( 0_ms );
+                  ->set_cooldown( 0_ms )
+                  ->set_expire_callback( [ int_buff ]( buff_t*, int, timespan_t ) { int_buff->expire(); } );
 
   effect.has_use_buff_override = true;
-  effect.custom_buff = buff;
+  effect.custom_buff           = buff;
 
-  auto on_use_cb = new special_effect_t( effect.player );
-  on_use_cb->name_str = effect.name() + "_cb";
-  on_use_cb->spell_id = effect.driver()->id();
-  on_use_cb->cooldown_ = 0_ms;
+  auto on_use_cb         = new special_effect_t( effect.player );
+  on_use_cb->name_str    = effect.name() + "_cb";
+  on_use_cb->spell_id    = effect.driver()->id();
+  on_use_cb->cooldown_   = effect.driver()->internal_cooldown();
   on_use_cb->custom_buff = int_buff;
   effect.player->special_effects.push_back( on_use_cb );
 
   auto cb = new dbc_proc_callback_t( effect.player, *on_use_cb );
   cb->activate_with_buff( buff );
+}
+
+void heart_of_roccor( special_effect_t& effect )
+{
+  // Currently missing the misc value for the buff type, manually setting it for now.
+  // Implementation will probably be redundant once its fixed.
+  auto buff = create_buff<stat_buff_t>( effect.player, effect.trigger(), effect.item )
+                  ->add_stat( STAT_STRENGTH, effect.trigger()->effectN( 1 ).average( effect ) );
+
+  effect.custom_buff = buff;
+  new dbc_proc_callback_t( effect.player, effect );
 }
 
 // Weapons
@@ -5143,9 +5143,6 @@ void harvesters_interdiction( special_effect_t& effect )
 // TODO: confirm buff cycle doesn't reset during middle of dungeon
 void guiding_stave_of_wisdom( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-
   struct guiding_stave_of_wisdom_cb_t : public dbc_proc_callback_t
   {
     std::vector<buff_t*> buffs;
@@ -5177,22 +5174,19 @@ void guiding_stave_of_wisdom( special_effect_t& effect )
 }
 
 // 470641 driver, trigger damage
-// 470642 damage, trigger reflect
-// 470643 reflect
+// 470642 damage
+// 470643 reflect, NYI
 void flame_wrath( special_effect_t& effect )
 {
-  if ( !effect.player->is_ptr() )
-    return;
-  // TODO: damage does not match tooltip, split damage is inconsistent. waiting for blizz to fix before implementing.
-  // current value per target vs tooltip:
-  //  1t: (4140/7200) 57.5%
-  //  2t: (3120/7200) 43.3333..%
-  //  3t: (2610/7200) 36.25%
-  //  4t: (2304/7200) 32%
-  //  5t: (2100/7200) 29.1666..%
-  //  6t: (1800/7200) 25%
-  //  7t: (1575/7200) 21.875%
-  //  8t: (1400/7200) 19.4444..%
+  auto damage = create_proc_action<generic_aoe_proc_t>( "flame_wrath", effect, effect.trigger(), true );
+  damage->base_dd_min = damage->base_dd_max =
+    effect.driver()->effectN( 1 ).average( effect ) + effect.trigger()->effectN( 1 ).average( effect );
+  damage->base_multiplier *= role_mult( effect );
+
+  effect.execute_action = damage;
+
+  // TODO: damage reflect shield NYI
+  new dbc_proc_callback_t( effect.player, effect );
 }
 
 // Armor
@@ -5873,6 +5867,7 @@ void register_special_effects()
   register_special_effect( 469915, items::golem_gearbox );
   register_special_effect( 469922, items::doperels_calling_rune );
   register_special_effect( 469925, items::burst_of_knowledge );
+  register_special_effect( 469768, items::heart_of_roccor );
 
   // Weapons
   register_special_effect( 443384, items::fateweaved_needle );
