@@ -4534,8 +4534,7 @@ struct eviscerate_t : public rogue_attack_t
 
     if ( bonus_attack && td( state->target )->debuffs.find_weakness->up() && result_is_hit( state->result ) )
     {
-      // 2024-10-13 -- Shadowed Finishers is currently bugged with Supercharger on PTR
-      bonus_attack->last_cp = cast_state( state )->get_combo_points( p()->bugs );
+      bonus_attack->last_cp = cast_state( state )->get_combo_points();
       bonus_attack->execute_on_target( state->target );
     }
   }
@@ -4995,11 +4994,6 @@ struct kingsbane_t : public rogue_attack_t
   kingsbane_t( util::string_view name, rogue_t* p, util::string_view options_str = {} ) :
     rogue_attack_t( name, p, p->talent.assassination.kingsbane, options_str )
   {
-    // 2024-10-14 -- For unknown reasons, Kingsbane appears to double dip from Lethality
-    if ( p->bugs )
-    {
-      apply_affecting_aura( p->talent.rogue.lethality );
-    }
   }
 
   void last_tick( dot_t* d ) override
@@ -5941,8 +5935,7 @@ struct black_powder_t: public rogue_attack_t
 
     if ( bonus_attack )
     {
-      // 2024-10-13 -- Shadowed Finishers is currently bugged with Supercharger on PTR
-      bonus_attack->last_cp = cast_state( execute_state )->get_combo_points( p()->bugs );
+      bonus_attack->last_cp = cast_state( execute_state )->get_combo_points();
       bonus_attack->execute_on_target( execute_state->target );
     }
 
@@ -7156,8 +7149,7 @@ struct coup_de_grace_t : public rogue_attack_t
 
       if ( bonus_attack && td( state->target )->debuffs.find_weakness->up() && result_is_hit( state->result ) )
       {
-        // 2024-10-13 -- Shadowed Finishers is currently bugged with Supercharger on PTR
-        bonus_attack->last_cp = cast_state( state )->get_combo_points( p()->bugs );
+        bonus_attack->last_cp = cast_state( state )->get_combo_points();
         bonus_attack->execute_on_target( state->target );
       }
     }

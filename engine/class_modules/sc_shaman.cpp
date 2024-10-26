@@ -1116,6 +1116,7 @@ public:
     const spell_data_t* improved_flametongue_weapon;
     const spell_data_t* earthen_rage;
     const spell_data_t* flowing_spirits_feral_spirit;
+    const spell_data_t* hot_hand;
   } spell;
 
   struct rng_obj_t
@@ -1480,13 +1481,15 @@ struct hot_hand_buff_t : public buff_t
 {
   shaman_t* shaman;
   hot_hand_buff_t( shaman_t* p )
-      : buff_t( p, "hot_hand", p->talent.hot_hand->effectN( 1 ).trigger() ), shaman( p )
+      : buff_t( p, "hot_hand", p->find_spell( 215785 ) ), shaman( p )
   {
     set_cooldown( timespan_t::zero() );
-    set_trigger_spell( shaman->talent.hot_hand );
-    set_default_value( shaman->talent.hot_hand->effectN( 2 ).percent() );
     set_stack_change_callback(
         [ this ]( buff_t*, int, int ) { shaman->cooldown.lava_lash->adjust_recharge_multiplier(); } );
+    if ( p->talent.hot_hand.ok() )
+    {
+      set_chance( p->talent.hot_hand->proc_chance() );
+    }
   }
 
   bool trigger( int s, double v, double c, timespan_t d ) override
@@ -4187,7 +4190,7 @@ struct windfury_attack_t : public shaman_attack_t
 
     if ( p()->buff.doom_winds->up() )
     {
-      m *= 1.0 + p()->talent.doom_winds->effectN( 2 ).percent();
+      m *= 1.0 + p()->talent.doom_winds->effectN( 1 ).trigger()->effectN( 2 ).percent();
     }
 
     if ( p()->talent.imbuement_mastery.ok() )
@@ -4888,7 +4891,14 @@ struct lava_lash_t : public shaman_attack_t
 
     if ( p()->buff.hot_hand->check() )
     {
-      m /= 1.0 + p()->buff.hot_hand->stack_value();
+      if ( p()->talent.hot_hand.ok() )
+      {
+        m /= 1.0 + p()->talent.hot_hand->effectN( 2 ).percent();
+      }
+      else
+      {
+        m /= 1.0 + p()->spell.hot_hand->effectN( 2 ).percent();
+      }
     }
 
     return m;
@@ -4900,7 +4910,14 @@ struct lava_lash_t : public shaman_attack_t
 
     if ( p()->buff.hot_hand->up() )
     {
-      m *= 1.0 + p()->talent.hot_hand->effectN( 3 ).percent();
+      if ( p()->talent.hot_hand.ok() )
+      {
+        m *= 1.0 + p()->talent.hot_hand->effectN( 3 ).percent();
+      }
+      else
+      {
+        m *= 1.0 + p()->spell.hot_hand->effectN( 3 ).percent();
+      }
     }
 
     // Flametongue imbue only increases Lava Lash damage if it is imbued on the off-hand
@@ -5231,6 +5248,18 @@ struct stormstrike_base_t : public shaman_attack_t
 
     auto state = debug_cast<stormstrike_state_t*>( s );
     state->stormblast = p()->talent.stormblast.ok() && p()->buff.stormblast->check() != 0;
+  }
+
+  double recharge_multiplier( const cooldown_t& cd ) const override
+  {
+    double m = shaman_attack_t::recharge_multiplier( cd );
+
+    if ( p()->buff.ascendance->up() )
+    {
+      m *= 1.0 + p()->buff.ascendance->data().effectN( 9 ).percent();
+    }
+
+    return m;
   }
 
   void init() override
@@ -6268,7 +6297,7 @@ struct chain_lightning_t : public chained_base_t
       p()->buff.voltaic_blaze->trigger();
     }
 
-    if ( exec_type == spell_variant::NORMAL && state->chain_target == 0 )
+    if ( ( exec_type == spell_variant::NORMAL || exec_type == spell_variant::THORIMS_INVOCATION ) && state->chain_target == 0 )
     {
       p()->trigger_whirling_air( state );
     }
@@ -7133,7 +7162,7 @@ struct lightning_bolt_t : public shaman_spell_t
       p()->trigger_deeply_rooted_elements( execute_state );
     }
 
-    if ( exec_type == spell_variant::NORMAL )
+    if ( exec_type == spell_variant::NORMAL || exec_type == spell_variant::THORIMS_INVOCATION )
     {
       p()->trigger_whirling_air( execute_state );
     }
@@ -8478,7 +8507,17 @@ public:
     if ( p()->talent.ashen_catalyst.ok() && d->state->result_amount > 0 )
     {
       auto reduction = p()->talent.ashen_catalyst->effectN( 1 ).base_value() / 10.0;
-      reduction /= 1.0 + p()->buff.hot_hand->check_value();
+      if ( p()->buff.hot_hand->check() )
+      {
+        if ( p()->talent.hot_hand.ok() )
+        {
+          reduction /= 1.0 + p()->talent.hot_hand->effectN( 2 ).percent();
+        }
+        else
+        {
+          reduction /= 1.0 + p()->spell.hot_hand->effectN( 2 ).percent();
+        }
+      }
 
       p()->cooldown.lava_lash->adjust( timespan_t::from_seconds( -reduction ) );
       p()->buff.ashen_catalyst->trigger();
@@ -10588,7 +10627,11 @@ inline bool ascendance_buff_t::trigger( int stacks, double value, double chance,
     lava_burst->cooldown->last_charged = timespan_t::zero();
   }
 
-  return buff_t::trigger( stacks, value, chance, duration );
+  buff_t::trigger( stacks, value, chance, duration );
+
+  p->cooldown.strike->adjust_recharge_multiplier();
+
+  return true;
 }
 
 inline void ascendance_buff_t::expire_override( int expiration_stacks, timespan_t remaining_duration )
@@ -10604,6 +10647,8 @@ inline void ascendance_buff_t::expire_override( int expiration_stacks, timespan_
     lava_burst->cooldown->last_charged = sim->current_time();
   }
   buff_t::expire_override( expiration_stacks, remaining_duration );
+
+  p->cooldown.strike->adjust_recharge_multiplier();
 }
 
 // ==========================================================================
@@ -11623,6 +11668,7 @@ void shaman_t::init_spells()
   spell.improved_flametongue_weapon = find_spell( 382028 );
   spell.earthen_rage        = find_spell( 170377 );
   spell.flowing_spirits_feral_spirit = find_spell( 469329 );
+  spell.hot_hand            = find_spell( 201900 );
 
   spell.t28_2pc_enh        = sets->set( SHAMAN_ENHANCEMENT, T28, B2 );
   spell.t28_4pc_enh        = sets->set( SHAMAN_ENHANCEMENT, T28, B4 );
@@ -11988,6 +12034,11 @@ void shaman_t::trigger_stormbringer( const action_state_t* state, double overrid
 
 void shaman_t::trigger_hot_hand( const action_state_t* state )
 {
+  if ( !talent.hot_hand.ok() )
+  {
+    return;
+  }
+
   assert( debug_cast<shaman_attack_t*>( state->action ) != nullptr && "Hot Hand called on invalid action type" );
   shaman_attack_t* attack = debug_cast<shaman_attack_t*>( state->action );
 
@@ -12302,8 +12353,7 @@ double shaman_t::windfury_proc_chance()
   proc_chance += cache.mastery() * proc_mul;
   if ( buff.doom_winds->up() )
   {
-    proc_chance *= talent.windfury_weapon.ok() *
-                  talent.doom_winds->effectN( 1 ).base_value();
+    proc_chance *= 1 + talent.doom_winds->effectN( 1 ).trigger()->effectN( 1 ).percent();
   }
 
   return proc_chance;
