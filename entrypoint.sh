@@ -8,7 +8,7 @@ SCRIPT_PATH="/app/SimulationCraft/torun.sh"
 
 # Download the latest version of the script with a timestamp to avoid caching
 echo "Downloading the latest script from $SCRIPT_URL..."
-curl -fsSL "$SCRIPT_URL?$(date +%s)" -o "$SCRIPT_PATH"
+curl -fsSL -H "Cache-Control: no-cache" "$SCRIPT_URL?$(date +%s)" -o "$SCRIPT_PATH""
 
 # Make the script executable
 chmod +x "$SCRIPT_PATH"
