@@ -90,7 +90,8 @@ enum class spell_variant : unsigned
   LIQUID_MAGMA_TOTEM,
   SURGE_OF_POWER,
   ARC_DISCHARGE,
-  REACTIVITY          // For 11.0.5 reactivity-based Sundering
+  REACTIVITY,         // For 11.0.5 reactivity-based Sundering
+  EARTHSURGE
 };
 
 enum class strike_variant : unsigned
@@ -333,6 +334,7 @@ static std::string action_name( util::string_view name, spell_variant t )
     case spell_variant::SURGE_OF_POWER: return fmt::format( "{}_sop", name );
     case spell_variant::ARC_DISCHARGE: return fmt::format( "{}_ad", name );
     case spell_variant::REACTIVITY: return fmt::format( "{}_re", name );
+    case spell_variant::EARTHSURGE: return fmt::format( "{}_es", name );
     default: return std::string( name );
   }
 }
@@ -350,6 +352,7 @@ static util::string_view exec_type_str( spell_variant t )
     case spell_variant::SURGE_OF_POWER: return "surge_of_power";
     case spell_variant::ARC_DISCHARGE: return "arc_discharge";
     case spell_variant::REACTIVITY: return "reactivity";
+    case spell_variant::EARTHSURGE: return "earthsurge";
     default: return "normal";
   }
 }
@@ -707,6 +710,7 @@ public:
 
     /// 11.0.5 rng options until proper formulas found
     double flowing_spirits_proc_chance = 0.0;
+    unsigned flowing_spirits_max_wolves = 0U;
     double imbuement_mastery_base_chance = 0.07;
     double ice_strike_base_chance = 0.07;
     double lively_totems_base_chance = 0.06;
@@ -1117,12 +1121,14 @@ public:
     const spell_data_t* earthen_rage;
     const spell_data_t* flowing_spirits_feral_spirit;
     const spell_data_t* hot_hand;
+    const spell_data_t* elemental_weapons;
   } spell;
 
   struct rng_obj_t
   {
     real_ppm_t* awakening_storms;
     real_ppm_t* lively_totems;
+    real_ppm_t* totemic_rebound;
 
     shuffled_rng_t* icefury;
     shuffled_rng_t* ancient_fellowship;
@@ -1301,10 +1307,10 @@ public:
   void trigger_fusion_of_elements( const action_state_t* state );
   void trigger_thunderstrike_ward( const action_state_t* state );
   void trigger_earthen_rage( const action_state_t* state );
-  void trigger_totemic_rebound( const action_state_t* state );
+  void trigger_totemic_rebound( const action_state_t* state, bool whirl = false, timespan_t delay = 300_ms );
   void trigger_ancestor( ancestor_cast cast, const action_state_t* state );
   void trigger_arc_discharge( const action_state_t* state );
-  void trigger_flowing_spirits( const action_state_t* state );
+  void trigger_flowing_spirits( const action_state_t* state, bool windfurySourceTrigger = false );
   void trigger_lively_totems( const action_state_t* state );
 
   // Legendary
@@ -1802,7 +1808,11 @@ public:
   bool affected_by_ele_tww1_4pc_cc;
   bool affected_by_ele_tww1_4pc_cd;
 
+  bool affected_by_elemental_weapons_da;
+  bool affected_by_elemental_weapons_ta;
+
   bool may_proc_flowing_spirits;
+  proc_t *proc_fs;
 
   shaman_action_t( util::string_view n, shaman_t* player, const spell_data_t* s = spell_data_t::nil(),
                   spell_variant type_ = spell_variant::NORMAL )
@@ -1848,7 +1858,10 @@ public:
       affected_by_lightning_elemental_ta( false ),
       affected_by_ele_tww1_4pc_cc( false ),
       affected_by_ele_tww1_4pc_cd( false ),
-      may_proc_flowing_spirits( false )
+      affected_by_elemental_weapons_da( false ),
+      affected_by_elemental_weapons_ta( false ),
+      may_proc_flowing_spirits( false ),
+      proc_fs( nullptr )
   {
     ab::may_crit = true;
     ab::track_cd_waste = s->cooldown() > timespan_t::zero() || s->charge_cooldown() > timespan_t::zero();
@@ -1942,6 +1955,11 @@ public:
       player->sets->set( SHAMAN_ELEMENTAL, TWW1, B4 )->effectN( 1 ).trigger()->effectN( 1 ) );
     affected_by_ele_tww1_4pc_cd = ab::data().affected_by(
       player->sets->set( SHAMAN_ELEMENTAL, TWW1, B4 )->effectN( 1 ).trigger()->effectN( 2 ) );
+
+    affected_by_elemental_weapons_da = p()->talent.elemental_weapons.ok() && ab::data().affected_by(
+      p()->spell.elemental_weapons->effectN( 1 ) );
+    affected_by_elemental_weapons_ta = p()->talent.elemental_weapons.ok() && ab::data().affected_by(
+      p()->spell.elemental_weapons->effectN( 2 ) );
   }
 
   std::string full_name() const
@@ -1985,6 +2003,9 @@ public:
     {
       p()->ability_cooldowns.push_back( this->cooldown );
     }
+
+    proc_fs = p()->get_proc( std::string( "Flowing Spirits: " ) + full_name() );
+    
   }
 
   static shaman_action_state_t* cast_state( action_state_t* s )
@@ -2122,6 +2143,13 @@ public:
       m *= 1.0 + p()->buff.fury_of_the_storms->data().effectN( 2 ).percent();
     }
 
+    if ( affected_by_elemental_weapons_da )
+    {
+      unsigned n_imbues = ( p()->main_hand_weapon.buff_type != 0 ) +
+        ( p()->off_hand_weapon.buff_type != 0 );
+      m *= 1.0 + p()->talent.elemental_weapons->effectN( 1 ).percent() / 10.0 * n_imbues;
+    }
+
     return m;
   }
 
@@ -2204,6 +2232,13 @@ public:
         !p()->buff.storm_elemental->up() && !p()->buff.lesser_storm_elemental->up())
     {
       m *= 1.0 + p()->buff.fury_of_the_storms->data().effectN( 3 ).percent();
+    }
+
+    if ( affected_by_elemental_weapons_ta )
+    {
+      unsigned n_imbues = ( p()->main_hand_weapon.buff_type != 0 ) +
+        ( p()->off_hand_weapon.buff_type != 0 );
+      m *= 1.0 + p()->talent.elemental_weapons->effectN( 1 ).percent() / 10.0 * n_imbues;
     }
 
     return m;
@@ -6297,14 +6332,14 @@ struct chain_lightning_t : public chained_base_t
       p()->buff.voltaic_blaze->trigger();
     }
 
-    if ( ( exec_type == spell_variant::NORMAL || exec_type == spell_variant::THORIMS_INVOCATION ) && state->chain_target == 0 )
-    {
-      p()->trigger_whirling_air( state );
-    }
-
     if ( state->chain_target == 0 )
     {
       p()->trigger_totemic_rebound( state );
+    }
+
+    if ( ( exec_type == spell_variant::NORMAL || exec_type == spell_variant::THORIMS_INVOCATION ) && state->chain_target == 0 )
+    {
+      p()->trigger_whirling_air( state );
     }
   }
 
@@ -7162,12 +7197,12 @@ struct lightning_bolt_t : public shaman_spell_t
       p()->trigger_deeply_rooted_elements( execute_state );
     }
 
+    p()->trigger_totemic_rebound( execute_state );
+
     if ( exec_type == spell_variant::NORMAL || exec_type == spell_variant::THORIMS_INVOCATION )
     {
       p()->trigger_whirling_air( execute_state );
     }
-
-    p()->trigger_totemic_rebound( execute_state );
   }
 
   void schedule_travel( action_state_t* s ) override
@@ -9021,6 +9056,7 @@ struct doom_winds_t : public shaman_attack_t
 
     weapon = &( player->main_hand_weapon );
     weapon_multiplier = 0.0;
+    may_proc_flowing_spirits = may_proc_flametongue = may_proc_stormbringer = may_proc_windfury = false;
 
     damage = new doom_winds_damage_t( player );
     add_child( damage );
@@ -9392,6 +9428,9 @@ struct totem_pulse_action_t : public T
   bool affected_by_lotfw_da;
   bool affected_by_lotfw_ta;
 
+  bool affected_by_elemental_weapons_da;
+  bool affected_by_elemental_weapons_ta;
+
   totem_pulse_action_t( const std::string& token, shaman_totem_pet_t<T>* p, const spell_data_t* s )
     : T( token, p, s ), hasted_pulse( false ), pulse_multiplier( 1.0 ), totem( p ), pulse ( 0 )
   {
@@ -9424,6 +9463,11 @@ struct totem_pulse_action_t : public T
     affected_by_earthen_weapon_ta = T::data().affected_by( o()->buff.earthen_weapon->data().effectN( 2 ) );
     affected_by_lotfw_da = T::data().affected_by( o()->buff.legacy_of_the_frost_witch->data().effectN( 1 ) );
     affected_by_lotfw_ta = T::data().affected_by( o()->buff.legacy_of_the_frost_witch->data().effectN( 2 ) );
+
+    affected_by_elemental_weapons_da = o()->talent.elemental_weapons.ok() && T::data().affected_by(
+      o()->spell.elemental_weapons->effectN( 1 ) );
+    affected_by_elemental_weapons_ta = o()->talent.elemental_weapons.ok() && T::data().affected_by(
+      o()->spell.elemental_weapons->effectN( 2 ) );
   }
 
   void init() override
@@ -9440,6 +9484,8 @@ struct totem_pulse_action_t : public T
         this->stats = ( *it )->get_stats( this->name(), this );
       }
     }
+
+    this->snapshot_flags = this->update_flags = this->snapshot_flags & ~( STATE_MUL_PET | STATE_TGT_MUL_PET );
   }
 
   shaman_t* o() const
@@ -9514,6 +9560,13 @@ struct totem_pulse_action_t : public T
       }
     }
 
+    if ( affected_by_elemental_weapons_da )
+    {
+      unsigned n_imbues = ( o()->main_hand_weapon.buff_type != 0 ) +
+        ( o()->off_hand_weapon.buff_type != 0 );
+      m *= 1.0 + o()->talent.elemental_weapons->effectN( 1 ).percent() / 10.0 * n_imbues;
+    }
+
     return m;
   }
 
@@ -9563,6 +9616,13 @@ struct totem_pulse_action_t : public T
       {
         m *= 1.0 + o()->buff.earthen_weapon->value();
       }
+    }
+
+    if ( affected_by_elemental_weapons_ta )
+    {
+      unsigned n_imbues = ( o()->main_hand_weapon.buff_type != 0 ) +
+        ( o()->off_hand_weapon.buff_type != 0 );
+      m *= 1.0 + o()->talent.elemental_weapons->effectN( 1 ).percent() / 10.0 * n_imbues;
     }
 
     return m;
@@ -9864,26 +9924,20 @@ struct healing_stream_totem_spell_t : public shaman_totem_t<heal_totem_pet_t, sh
 
 struct surging_totem_pulse_t : public spell_totem_action_t
 {
-  bool sundered;
+  spell_variant variant;
 
-  surging_totem_pulse_t( spell_totem_pet_t* totem )
-    : spell_totem_action_t( "tremor", totem, totem->find_spell( 455622 ) ), sundered( false )
+  surging_totem_pulse_t( spell_totem_pet_t* totem, spell_variant var_ = spell_variant::NORMAL ) :
+    spell_totem_action_t( ::action_name( "tremor", var_ ), totem,
+      totem->find_spell( 455622 ) ), variant( var_ )
   {
     aoe          = -1;
     reduced_aoe_targets = as<double>( data().effectN( 2 ).base_value() );
     hasted_pulse = true;
   }
 
-  void trigger_earthsurge()
-  {
-    sundered = true;
-    execute();
-    sundered = false;
-  }
-
   double miss_chance( double hit, player_t* t ) const override
   {
-    if ( sundered || o()->options.surging_totem_miss_chance == 0.0 )
+    if ( variant == spell_variant::EARTHSURGE || o()->options.surging_totem_miss_chance == 0.0 )
     {
       return spell_totem_action_t::miss_chance( hit, t );
     }
@@ -9915,20 +9969,12 @@ struct surging_totem_pulse_t : public spell_totem_action_t
       m *= 1.0 + o()->talent.oversurge->effectN( 1 ).percent();
     }
 
-    // Hardcoded in tooltip
-    if ( sundered )
+    if ( variant == spell_variant::EARTHSURGE )
     {
-      m *= 3.0;
+      m *= o()->talent.earthsurge->effectN( 1 ).percent();
     }
 
     return m;
-  }
-
-  void reset() override
-  {
-    spell_totem_action_t::reset();
-
-    sundered = false;
   }
 };
 
@@ -9939,13 +9985,35 @@ struct surging_bolt_t : public spell_totem_action_t
   {
     background = true;
   }
+
+  void init() override
+  {
+    spell_totem_action_t::init();
+
+    // Surging Bolt appears to be special and actually inherit guardian modifiers, so enable them
+    snapshot_flags = update_flags = snapshot_flags | STATE_MUL_PET;
+  }
+
+  double action_da_multiplier() const override
+  {
+    auto m = spell_totem_action_t::action_da_multiplier();
+
+    if ( o()->buff.ascendance->up() && o()->talent.oversurge.ok() )
+    {
+      m *= 1.0 + o()->talent.oversurge->effectN( 1 ).percent();
+    }
+
+    return m;
+  }
 };
 
 struct surging_totem_t : public spell_totem_pet_t
 {
   surging_bolt_t* surging_bolt;
+  surging_totem_pulse_t* earthsurge;
 
-  surging_totem_t( shaman_t* owner ) : spell_totem_pet_t( owner, "surging_totem" ), surging_bolt( nullptr )
+  surging_totem_t( shaman_t* owner ) : spell_totem_pet_t( owner, "surging_totem" ),
+    surging_bolt( nullptr ), earthsurge( nullptr )
   {
     pulse_amplitude = owner->find_spell(
       owner->specialization() == SHAMAN_ENHANCEMENT ? 455593 : 45594 )->effectN( 1 ).period();
@@ -9965,6 +10033,11 @@ struct surging_totem_t : public spell_totem_pet_t
     spell_totem_pet_t::init_spells();
 
     pulse_action = new surging_totem_pulse_t( this );
+
+    if ( o()->talent.earthsurge->ok() )
+    {
+      earthsurge = new surging_totem_pulse_t( this, spell_variant::EARTHSURGE );
+    }
 
     if ( o()->talent.totemic_rebound.ok() )
     {
@@ -11126,6 +11199,7 @@ void shaman_t::create_options()
 
   add_option( opt_float( "shaman.ice_strike_base_chance", options.ice_strike_base_chance, 0.0, 1.0 ) );
   add_option( opt_float( "shaman.flowing_spirits_proc_chance", options.flowing_spirits_proc_chance, 0.0, 1.0 ) );
+  add_option( opt_uint( "shaman.flowing_spirits_max_wolves", options.flowing_spirits_max_wolves, 0U, std::numeric_limits<unsigned>::max() ) );
 
   add_option( opt_float( "shaman.imbuement_mastery_base_chance", options.imbuement_mastery_base_chance, 0.0, 1.0 ) );
 
@@ -11176,6 +11250,7 @@ void shaman_t::copy_from( player_t* source )
   options.thunderstrike_ward_proc_chance = p->options.thunderstrike_ward_proc_chance;
   options.ice_strike_base_chance = p->options.ice_strike_base_chance;
   options.flowing_spirits_proc_chance = p->options.flowing_spirits_proc_chance;
+  options.flowing_spirits_max_wolves = p->options.flowing_spirits_max_wolves;
   options.imbuement_mastery_base_chance = p->options.imbuement_mastery_base_chance;
   options.lively_totems_base_chance = p->options.lively_totems_base_chance;
 
@@ -11669,6 +11744,7 @@ void shaman_t::init_spells()
   spell.earthen_rage        = find_spell( 170377 );
   spell.flowing_spirits_feral_spirit = find_spell( 469329 );
   spell.hot_hand            = find_spell( 201900 );
+  spell.elemental_weapons   = find_spell( 408390 );
 
   spell.t28_2pc_enh        = sets->set( SHAMAN_ENHANCEMENT, T28, B2 );
   spell.t28_4pc_enh        = sets->set( SHAMAN_ENHANCEMENT, T28, B4 );
@@ -12398,7 +12474,7 @@ void shaman_t::trigger_windfury_weapon( const action_state_t* state, double over
     // Winds is talented
     if ( talent.flowing_spirits.ok() && !talent.elemental_spirits.ok() )
     {
-      trigger_flowing_spirits( state );
+      trigger_flowing_spirits( state, true );
     }
 
     trigger_secondary_ability( state, a );
@@ -12413,7 +12489,7 @@ void shaman_t::trigger_windfury_weapon( const action_state_t* state, double over
       // Unruly Winds gets an additional proc chance, with half the proc chance
       if ( talent.flowing_spirits.ok() && !talent.elemental_spirits.ok() )
       {
-        trigger_flowing_spirits( state );
+        trigger_flowing_spirits( state, true );
       }
     }
 
@@ -12752,7 +12828,7 @@ void shaman_t::trigger_awakening_storms( const action_state_t* state )
   action.awakening_storms->execute_on_target( state->target );
 }
 
-void shaman_t::trigger_earthsurge( const action_state_t* /* state */ )
+void shaman_t::trigger_earthsurge( const action_state_t* state )
 {
   if ( !talent.earthsurge.ok() )
   {
@@ -12765,7 +12841,7 @@ void shaman_t::trigger_earthsurge( const action_state_t* /* state */ )
     return;
   }
 
-  debug_cast<surging_totem_pulse_t*>( totem->pulse_action )->trigger_earthsurge();
+  totem->earthsurge->execute_on_target( state->target );
 }
 
 void shaman_t::trigger_whirling_air( const action_state_t* state )
@@ -12790,7 +12866,8 @@ void shaman_t::trigger_whirling_air( const action_state_t* state )
     for ( auto i = 0U;
           i < as<unsigned>( buff.whirling_air->data().effectN( 3 ).base_value() ); ++i )
     {
-      debug_cast<surging_totem_t*>( totem )->trigger_surging_bolt( state->target );
+      // First Whirling Air Surging Bolt seems to trigger around 300ms later
+      trigger_totemic_rebound( state, true, 300_ms + i * 500_ms );
     }
   }
 
@@ -12894,22 +12971,31 @@ void shaman_t::trigger_earthen_rage( const action_state_t* state )
   }
 }
 
-void shaman_t::trigger_totemic_rebound( const action_state_t* state )
+void shaman_t::trigger_totemic_rebound( const action_state_t* state, bool whirl, timespan_t delay )
 {
   if ( !pet.surging_totem.n_active_pets() )
   {
     return;
   }
 
-  if ( !buff.totemic_rebound->trigger() )
+  if ( !whirl && !rng_obj.totemic_rebound->trigger() )
   {
     return;
   }
 
-  for ( auto totem : pet.surging_totem )
-  {
-    debug_cast<surging_totem_t*>( totem )->trigger_surging_bolt( state->target );
-  }
+  buff.totemic_rebound->trigger();
+
+  make_event( *sim, delay, [ this, t = state->target ] {
+    if ( t->is_sleeping() || !pet.surging_totem.n_active_pets() )
+    {
+      return;
+    }
+
+    for ( auto totem : pet.surging_totem )
+    {
+      debug_cast<surging_totem_t*>( totem )->trigger_surging_bolt( t );
+    }
+  } );
 }
 
 void shaman_t::trigger_ancestor( ancestor_cast cast, const action_state_t* state )
@@ -12973,7 +13059,11 @@ void shaman_t::trigger_arc_discharge( const action_state_t* state )
   buff.arc_discharge->decrement();
 }
 
-void shaman_t::trigger_flowing_spirits( const action_state_t* state )
+//Flowing Spirits logic is real round-about all around the module, when Windfury procs it, it reports
+//the wrong ability as proc'ing it (like wind lash, auto attacks, mh ss/ws).
+//Kind of stuck between a rock and a hard place with the special handling for WF and the desire
+//to accurately track what proc'd flowing spirits, hence the optional parameter for procs coming from WF trigger function
+void shaman_t::trigger_flowing_spirits( const action_state_t* state, bool windfurySourceTrigger )
 {
   if ( !talent.flowing_spirits.ok() )
   {
@@ -12985,7 +13075,20 @@ void shaman_t::trigger_flowing_spirits( const action_state_t* state )
     return;
   }
 
-  double proc_chance = talent.flowing_spirits->effectN( 1 ).percent() * 2.0 / 3.0;
+  if ( options.flowing_spirits_max_wolves > 0 &&
+       pet.all_wolves.size() == options.flowing_spirits_max_wolves )
+  {
+    sim->print_debug( "{} flowing_spirits cap of {} reached", name(),
+      options.flowing_spirits_max_wolves );
+    return;
+  }
+
+  double proc_chance = talent.flowing_spirits->effectN( 1 ).percent();
+  if ( options.flowing_spirits_max_wolves == 0 )
+  {
+    proc_chance *= 2.0 / 3.0;
+  }
+
   if ( options.flowing_spirits_proc_chance != 0.0 )
   {
     proc_chance = options.flowing_spirits_proc_chance;
@@ -13014,7 +13117,9 @@ void shaman_t::trigger_flowing_spirits( const action_state_t* state )
 
   if ( talent.elemental_spirits.ok() )
   {
-    for ( unsigned i = 0; i < n_summons; ++i )
+    for ( unsigned i = 0;
+          i < n_summons && ( options.flowing_spirits_max_wolves == 0 || pet.all_wolves.size() < options.flowing_spirits_max_wolves );
+          ++i )
     {
       if ( dbc::is_school( state->action->get_school(), SCHOOL_FIRE ) )
       {
@@ -13035,14 +13140,37 @@ void shaman_t::trigger_flowing_spirits( const action_state_t* state )
   }
   else
   {
-    pet.spirit_wolves.spawn( duration, n_summons );
-    for ( unsigned i = 0; i < n_summons; ++i )
+    for ( unsigned i = 0;
+          i < n_summons && ( options.flowing_spirits_max_wolves == 0 || pet.all_wolves.size() < options.flowing_spirits_max_wolves );
+          ++i )
     {
+      pet.spirit_wolves.spawn( duration );
       buff.earthen_weapon->trigger( duration );
     }
   }
 
+  if ( windfurySourceTrigger )
+  {
+    shaman_attack_t* a = windfury_mh;
+    a->proc_fs->occur();
+  }
+  else
+  {
+    if ( state->action->type == ACTION_ATTACK )
+    {
+      shaman_action_t<melee_attack_t>* state_attack = debug_cast<shaman_action_t<melee_attack_t>*>( state->action );
+      state_attack->proc_fs->occur();
+    }
+
+    if ( state->action->type == ACTION_SPELL )
+    {
+      shaman_spell_t* state_spell = debug_cast<shaman_spell_t*>( state->action );
+      state_spell->proc_fs->occur();
+    }
+  } 
+  
   cooldown.flowing_spirit->start( talent.flowing_spirits->internal_cooldown() );
+  buff.feral_spirit_maelstrom->trigger(duration );
 }
 
 void shaman_t::trigger_lively_totems( const action_state_t* state )
@@ -13143,8 +13271,7 @@ void shaman_t::create_buffs()
     ->set_chance( talent.awakening_storms.ok() ? 1.0 : 0.0 );
 
   buff.totemic_rebound = make_buff( this, "totemic_rebound", find_spell( 458269 ) )
-    ->set_default_value_from_effect( 1 )
-    ->set_trigger_spell( talent.totemic_rebound );
+    ->set_default_value_from_effect( 1 );
 
   buff.flametongue_weapon = make_buff( this, "flametongue_weapon", find_class_spell( "Flametongue Weapon") );
 
@@ -13481,6 +13608,7 @@ void shaman_t::init_rng()
 
   rng_obj.awakening_storms = get_rppm( "awakening_storms", talent.awakening_storms );
   rng_obj.lively_totems = get_rppm( "lively_totems", talent.lively_totems );
+  rng_obj.totemic_rebound = get_rppm( "totemic_rebound", talent.totemic_rebound );
 
   if ( options.ancient_fellowship_positive == 0 ) {
     options.ancient_fellowship_positive = as<unsigned>( talent.ancient_fellowship->effectN( 3 ).base_value() );
@@ -14321,7 +14449,7 @@ double shaman_t::composite_player_pet_damage_multiplier( const action_state_t* s
     m *= 1.0 + spec.elemental_shaman->effectN( 4 ).percent();
     m *= 1.0 + spec.elemental_shaman->effectN( 28 ).percent();
 
-    m *= 1.0 + spec.enhancement_shaman->effectN( 13 ).percent();
+    m *= 1.0 + spec.enhancement_shaman->effectN( 4 ).percent();
   }
 
   return m;
