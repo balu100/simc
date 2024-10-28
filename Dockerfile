@@ -80,7 +80,7 @@ COPY --from=build /app/SimulationCraft/engine/simc /app/SimulationCraft/
 COPY --from=build /app/SimulationCraft/profiles/ /app/SimulationCraft/profiles/
 
 # Install curl to download the script
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl bash
 
 # Create directory
 WORKDIR /app/SimulationCraft
