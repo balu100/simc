@@ -7344,7 +7344,10 @@ struct elemental_blast_overload_t : public elemental_overload_spell_t
   {
     double m = elemental_overload_spell_t::action_multiplier();
 
-    m *= 1.0 + p()->buff.magma_chamber->check_stack_value();
+    if ( exec_type == spell_variant::NORMAL ) 
+    {
+      m *= 1.0 + p()->buff.magma_chamber->check_stack_value();
+    }
 
     if ( exec_type == spell_variant::FUSION_OF_ELEMENTS )
     {
@@ -7414,7 +7417,10 @@ struct elemental_blast_t : public shaman_spell_t
   {
     double m = shaman_spell_t::action_multiplier();
 
-    m *= 1.0 + p()->buff.magma_chamber->stack_value();
+    if ( exec_type == spell_variant::NORMAL ) 
+    {
+      m *= 1.0 + p()->buff.magma_chamber->stack_value();
+    }
 
     if ( exec_type == spell_variant::FUSION_OF_ELEMENTS )
     {
@@ -7466,16 +7472,6 @@ struct elemental_blast_t : public shaman_spell_t
       }
 
       p()->trigger_totemic_rebound( execute_state );
-    }
-
-    // While I still think this interaction shouldn't exist (proc of proc) it
-    // certainly does. So here we go with an implemented bug.
-    if ( !p()->bugs &&
-         p()->specialization() == SHAMAN_ELEMENTAL &&
-         exec_type == spell_variant::FUSION_OF_ELEMENTS )
-    {
-        // Elemental Blast can trigger DRE on PTR
-        p()->trigger_deeply_rooted_elements( execute_state );
     }
 
     // [BUG] 2024-08-23 Supercharge works on Elemental Blast in-game
@@ -13085,7 +13081,7 @@ void shaman_t::trigger_flowing_spirits( const action_state_t* state, bool windfu
   double proc_chance = talent.flowing_spirits->effectN( 1 ).percent();
   if ( options.flowing_spirits_max_wolves == 0 )
   {
-    proc_chance *= 2.0 / 3.0;
+    proc_chance *= 9.0 / 20.0;
   }
 
   if ( options.flowing_spirits_proc_chance != 0.0 )
