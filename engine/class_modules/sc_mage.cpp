@@ -469,7 +469,7 @@ public:
     bool treat_bloodlust_as_time_warp = false;
     unsigned initial_spellfire_spheres = 5;
     arcane_phoenix_rotation arcane_phoenix_rotation_override = arcane_phoenix_rotation::DEFAULT;
-    bool ice_nova_consumes_winters_chill = false;
+    bool ice_nova_consumes_winters_chill = true;
   } options;
 
   // Pets
@@ -5678,7 +5678,9 @@ struct fire_blast_t final : public fire_mage_spell_t
       p()->state.trigger_glorious_incandescence = true;
 
     fire_mage_spell_t::execute();
+
     p()->buffs.glorious_incandescence->decrement();
+    p()->buffs.feel_the_burn->trigger();
 
     if ( p()->specialization() == MAGE_FIRE )
       p()->trigger_time_manipulation();
@@ -5706,8 +5708,6 @@ struct fire_blast_t final : public fire_mage_spell_t
 
     if ( result_is_hit( s->result ) && s->chain_target == 0 )
     {
-      p()->buffs.feel_the_burn->trigger();
-
       if ( p()->buffs.excess_fire->check() )
       {
         p()->action.frostfire_burst->execute_on_target( s->target );
@@ -6075,8 +6075,6 @@ struct phoenix_flames_splash_t final : public fire_mage_spell_t
 
     if ( result_is_hit( s->result ) )
     {
-      p()->buffs.feel_the_burn->trigger();
-
       if ( s->chain_target == 0 && p()->buffs.excess_frost->check() )
       {
         p()->action.excess_ice_nova->execute_on_target( s->target );
@@ -6156,7 +6154,9 @@ struct phoenix_flames_t final : public fire_mage_spell_t
   void execute() override
   {
     fire_mage_spell_t::execute();
+
     p()->buffs.majesty_of_the_phoenix->trigger();
+    p()->buffs.feel_the_burn->trigger();
   }
 
   void impact( action_state_t* s ) override
@@ -6989,9 +6989,12 @@ struct embedded_splinter_t final : public mage_spell_t
       vm->base_multiplier = old_mult;
     }
 
-    // If the dot ended due to the target dying, transfer the splinters to a nearby target.
+    // If the dot ended due to the target dying, transfer a random portion of the splinters to a nearby target.
     if ( d->target->is_sleeping() )
-      make_event( *sim, [ this, stack ] { p()->trigger_splinter( nullptr, stack ); } );
+    {
+      int transfer = 1 + rng().range( stack );
+      make_event( *sim, [ this, transfer ] { p()->trigger_splinter( nullptr, transfer ); } );
+    }
   }
 };
 
@@ -7864,6 +7867,8 @@ void mage_t::create_pets()
   {
     int images = as<int>( talents.mirror_image->effectN( 2 ).base_value() );
     images += as<int>( talents.phantasmal_image->effectN( 1 ).base_value() );
+    if ( bugs && talents.phantasmal_image.ok() )
+      images += 1;
     for ( int i = 0; i < images; i++ )
     {
       auto image = new pets::mirror_image::mirror_image_pet_t( sim, this );

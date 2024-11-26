@@ -888,7 +888,6 @@ public:
     action_t* summon_mograine;
     propagate_const<action_t*> undeath_dot;
     propagate_const<action_t*> trollbanes_icy_fury;
-    propagate_const<action_t*> mograines_death_and_decay;
 
     // Sanlayn
     propagate_const<action_t*> vampiric_strike_heal;
@@ -1543,6 +1542,7 @@ public:
   struct modified_spells_t
   {
     modified_spell_data_t* infliction_of_sorrow;
+    modified_spell_data_t* vampiric_strike;
   } modified_spell;
 
   // RPPM
@@ -2390,7 +2390,7 @@ struct death_knight_pet_t : public pet_t
 
     if ( player->talent.unholy.commander_of_the_dead.ok() )
     {
-      commander_value = player->pet_spell.commander_of_the_dead->effectN( 1 ).percent();
+      commander_value = 1.0 + player->pet_spell.commander_of_the_dead->effectN( 1 ).percent();
     }
   }
 
@@ -2521,7 +2521,7 @@ struct death_knight_pet_t : public pet_t
     if ( dk()->specialization() == DEATH_KNIGHT_UNHOLY && affected_by_commander_of_the_dead &&
          dk()->buffs.commander_of_the_dead->check() )
     {
-      m *= 1.0 + commander_value;
+      m *= commander_value;
     }
 
     return m;
@@ -2666,7 +2666,7 @@ struct pet_action_t : public parse_action_effects_t<Base>
 
   death_knight_t* dk() const
   {
-    return debug_cast<death_knight_t*>( debug_cast<pet_t*>( this->player )->owner );
+    return debug_cast<death_knight_t*>( pet()->owner );
   }
 
   void init() override
@@ -2735,8 +2735,8 @@ struct pet_spell_t : public pet_action_t<T_PET, spell_t>
 template <typename T_PET>
 struct ruptured_viscera_t final : public pet_spell_t<T_PET>
 {
-  ruptured_viscera_t( T_PET* p, bool magus = false )
-    : pet_spell_t<T_PET>( p, "ruptured_viscera", p->dk()->pet_spell.ruptured_viscera ), magus( magus )
+  ruptured_viscera_t( util::string_view n, T_PET* p, bool magus = false )
+    : pet_spell_t<T_PET>( p, n, p->dk()->pet_spell.ruptured_viscera ), magus( magus )
   {
     this->aoe        = -1;
     this->background = true;
@@ -2843,7 +2843,7 @@ struct auto_attack_melee_t : public pet_melee_attack_t<T>
 
   death_knight_t* dk() const
   {
-    return debug_cast<death_knight_t*>( debug_cast<pet_t*>( this->player )->owner );
+    return debug_cast<death_knight_t*>( pet()->owner );
   }
 
   // Override a bunch of stuff that attack_t overrides to prevent multiple cache hits
@@ -2878,6 +2878,7 @@ struct base_ghoul_pet_t : public death_knight_pet_t
     : death_knight_pet_t( owner, name, guardian, true, dynamic )
   {
     main_hand_weapon.swing_time = 2.0_s;
+    main_hand_weapon.type       = WEAPON_BEAST;
   }
 
   attack_t* create_main_hand_auto_attack() override
@@ -3059,7 +3060,7 @@ struct ghoul_pet_t final : public base_ghoul_pet_t
 
   attack_t* create_main_hand_auto_attack() override
   {
-    return new auto_attack_melee_t( this );
+    return new auto_attack_melee_t<ghoul_pet_t>( this );
   }
 
   double composite_player_multiplier( school_e school ) const override
@@ -3071,7 +3072,7 @@ struct ghoul_pet_t final : public base_ghoul_pet_t
       m *= 1.0 + dk()->buffs.dark_transformation->value();
 
       if ( ghoulish_frenzy->check() )
-        m *= 1.0 + ghoulish_frenzy->value();
+        m *= 1.0 + ghoulish_frenzy->check_value();
     }
 
     return m;
@@ -3144,8 +3145,8 @@ private:
   cooldown_t* gnaw_cd;  // shared cd between gnaw/monstrous_blow
 
 public:
-  gain_t* dark_transformation_gain;
-  buff_t* ghoulish_frenzy;
+  propagate_const<gain_t*> dark_transformation_gain;
+  propagate_const<buff_t*> ghoulish_frenzy;
 };
 
 // ==========================================================================
@@ -3192,13 +3193,12 @@ struct army_ghoul_pet_t final : public base_ghoul_pet_t
     }
   }
 
-  void init_spells() override
+  void create_actions() override
   {
-    base_ghoul_pet_t::init_spells();
-
+    base_ghoul_pet_t::create_actions();
     if ( dk()->talent.unholy.ruptured_viscera.ok() )
     {
-      ruptured_viscera = new ruptured_viscera_t<army_ghoul_pet_t>( this );
+      ruptured_viscera = new ruptured_viscera_t<army_ghoul_pet_t>( "ruptured_viscera", this );
     }
   }
 
@@ -3230,18 +3230,18 @@ struct army_ghoul_pet_t final : public base_ghoul_pet_t
     return base_ghoul_pet_t::create_action( name, options_str );
   }
 
-  void dismiss( bool expired = false ) override
+  void demise() override
   {
     if ( !sim->event_mgr.canceled && dk()->talent.unholy.ruptured_viscera.ok() )
     {
       ruptured_viscera->execute_on_target( target );
     }
 
-    death_knight_pet_t::dismiss( expired );
+    base_ghoul_pet_t::demise();
   }
 
 private:
-  pet_spell_t<army_ghoul_pet_t>* ruptured_viscera;
+  propagate_const<pet_spell_t<army_ghoul_pet_t>*> ruptured_viscera;
 };
 
 // ==========================================================================
@@ -3260,7 +3260,7 @@ struct gargoyle_pet_t : public death_knight_pet_t
 
   struct gargoyle_strike_t : public pet_spell_t<gargoyle_pet_t>
   {
-    gargoyle_strike_t( gargoyle_pet_t* p ) : pet_spell_t( p, "gargoyle_strike", p->dk()->pet_spell.gargoyle_strike )
+    gargoyle_strike_t( std::string_view n, gargoyle_pet_t* p ) : pet_spell_t( p, n, p->dk()->pet_spell.gargoyle_strike )
     {
       background = repeating = true;
     }
@@ -3296,7 +3296,7 @@ struct gargoyle_pet_t : public death_knight_pet_t
   {
     double m = death_knight_pet_t::composite_player_multiplier( s );
 
-    m *= 1.0 + dark_empowerment->stack_value();
+    m *= 1.0 + dark_empowerment->check_stack_value();
 
     return m;
   }
@@ -3312,7 +3312,7 @@ struct gargoyle_pet_t : public death_knight_pet_t
   void create_actions() override
   {
     death_knight_pet_t::create_actions();
-    gargoyle_strike = new gargoyle_strike_t( this );
+    gargoyle_strike = get_action<gargoyle_strike_t>( "gargoyle_strike", this );
   }
 
   void reschedule_gargoyle()
@@ -3355,10 +3355,10 @@ struct gargoyle_pet_t : public death_knight_pet_t
   }
 
 private:
-  pet_spell_t<gargoyle_pet_t>* gargoyle_strike;
+  propagate_const<action_t*> gargoyle_strike;
 
 public:
-  buff_t* dark_empowerment;
+  propagate_const<buff_t*> dark_empowerment;
 };
 
 // ==========================================================================
@@ -3381,8 +3381,8 @@ struct risen_skulker_pet_t : public death_knight_pet_t
 
   struct skulker_shot_t : public pet_spell_t<risen_skulker_pet_t>
   {
-    skulker_shot_t( risen_skulker_pet_t* p )
-      : pet_spell_t<risen_skulker_pet_t>( p, "skulker_shot", p->dk()->pet_spell.skulker_shot )
+    skulker_shot_t( util::string_view n, risen_skulker_pet_t* p )
+      : pet_spell_t<risen_skulker_pet_t>( p, n, p->dk()->pet_spell.skulker_shot )
     {
       weapon     = &( p->main_hand_weapon );
       background = true;
@@ -3431,7 +3431,7 @@ struct risen_skulker_pet_t : public death_knight_pet_t
   void create_actions() override
   {
     death_knight_pet_t::create_actions();
-    skulker_shot = new skulker_shot_t( this );
+    skulker_shot = get_action<skulker_shot_t>( "skulker_shot", this );
   }
 
   void reschedule_skulker()
@@ -3458,7 +3458,7 @@ struct risen_skulker_pet_t : public death_knight_pet_t
   }
 
 private:
-  pet_spell_t<risen_skulker_pet_t>* skulker_shot;
+  propagate_const<action_t*> skulker_shot;
 };
 
 // ==========================================================================
@@ -3682,6 +3682,18 @@ struct dancing_rune_weapon_pet_t : public death_knight_pet_t
     bool is_reaper_of_souls;
   };
 
+  struct drw_auto_attack_t : public auto_attack_melee_t<dancing_rune_weapon_pet_t>
+  {
+    drw_auto_attack_t( dancing_rune_weapon_pet_t* p ) : auto_attack_melee_t( p )
+    {
+      weapon = &p->main_hand_weapon;
+      weapon->slot = SLOT_MAIN_HAND;
+      base_execute_time = p->main_hand_weapon.swing_time;
+    }
+  }; 
+
+  action_t* drw_auto_attack;
+
   struct abilities_t
   {
     action_t* blood_plague;
@@ -3696,7 +3708,7 @@ struct dancing_rune_weapon_pet_t : public death_knight_pet_t
   } ability;
 
   dancing_rune_weapon_pet_t( death_knight_t* owner, std::string_view drw_name = "dancing_rune_weapon" )
-    : death_knight_pet_t( owner, drw_name, true, true ), ability()
+    : death_knight_pet_t( owner, drw_name, true, false ), ability()
   {
     // The pet wields the same weapon type as its owner for spells with weapon requirements
     main_hand_weapon.type       = owner->main_hand_weapon.type;
@@ -3706,9 +3718,11 @@ struct dancing_rune_weapon_pet_t : public death_knight_pet_t
     resource_regeneration  = regen_type::DISABLED;
   }
 
-  void init_spells() override
+  void create_actions() override
   {
-    death_knight_pet_t::init_spells();
+    death_knight_pet_t::create_actions();
+
+    drw_auto_attack = new drw_auto_attack_t( this );
 
     // Dont init spells that dont exist, breaks reporting for auto's
     if ( dk()->talent.blood.blood_boil.ok() )
@@ -3754,6 +3768,7 @@ struct dancing_rune_weapon_pet_t : public death_knight_pet_t
   void arise() override
   {
     death_knight_pet_t::arise();
+    reschedule_drw();
     dk()->buffs.dancing_rune_weapon->trigger();
     if ( dk()->talent.sanlayn.gift_of_the_sanlayn.ok() )
       dk()->buffs.gift_of_the_sanlayn->trigger();
@@ -3767,9 +3782,21 @@ struct dancing_rune_weapon_pet_t : public death_knight_pet_t
       dk()->buffs.gift_of_the_sanlayn->expire();
   }
 
-  attack_t* create_main_hand_auto_attack() override
+  void reschedule_drw()
   {
-    return new auto_attack_melee_t<dancing_rune_weapon_pet_t>( this );
+    if ( executing || is_sleeping() || buffs.movement->check() || buffs.stunned->check() )
+      return;
+
+    else
+    {
+      drw_auto_attack->set_target( dk()->target );
+      drw_auto_attack->schedule_execute();
+    }
+  }
+
+  void schedule_ready( timespan_t /* delta_time */, bool /* waiting */ ) override
+  {
+    reschedule_drw();
   }
 };
 
@@ -3864,28 +3891,19 @@ struct magus_pet_t : public death_knight_pet_t
     npc_id                            = 163366;
   }
 
-  void init_spells() override
-  {
-    death_knight_pet_t::init_spells();
-    if ( dk()->talent.unholy.ruptured_viscera.ok() )
-    {
-      ruptured_viscera = new ruptured_viscera_t<magus_pet_t>( this, true );
-    }
-  }
-
   resource_e primary_resource() const override
   {
     return RESOURCE_NONE;
   }
 
-  void dismiss( bool expired = false ) override
+  void demise() override
   {
     if ( !sim->event_mgr.canceled && dk()->talent.unholy.ruptured_viscera.ok() )
     {
       ruptured_viscera->execute_on_target( target );
     }
 
-    death_knight_pet_t::dismiss( expired );
+    death_knight_pet_t::demise();
   }
 
   void init_base_stats() override
@@ -3908,6 +3926,15 @@ struct magus_pet_t : public death_knight_pet_t
     def->add_action( "shadow_bolt" );
   }
 
+  void create_actions() override
+  {
+    death_knight_pet_t::create_actions();
+    if ( dk()->talent.unholy.ruptured_viscera.ok() )
+    {
+      ruptured_viscera = new ruptured_viscera_t<magus_pet_t>( "ruptured_viscera", this, true );
+    }
+  }
+
   action_t* create_action( std::string_view name, std::string_view options_str ) override
   {
     if ( name == "frostbolt" )
@@ -3919,7 +3946,7 @@ struct magus_pet_t : public death_knight_pet_t
   }
 
 private:
-  pet_spell_t<magus_pet_t>* ruptured_viscera;
+  propagate_const<pet_spell_t<magus_pet_t>*> ruptured_viscera;
 };
 
 // ==========================================================================
@@ -3929,23 +3956,24 @@ struct blood_beast_pet_t : public death_knight_pet_t
 {
   struct blood_beast_melee_t : public auto_attack_melee_t<blood_beast_pet_t>
   {
-    blood_beast_melee_t( blood_beast_pet_t* p ) : auto_attack_melee_t( p )
+    blood_beast_melee_t( blood_beast_pet_t* p ) : auto_attack_melee_t<blood_beast_pet_t>( p )
     {
     }
 
     void impact( action_state_t* state ) override
     {
-      auto_attack_melee_t::impact( state );
+      auto_attack_melee_t<blood_beast_pet_t>::impact( state );
       if ( state->result_amount > 0 )
       {
         pet()->accumulator += state->result_amount;
       }
     }
   };
+
   struct corrupted_blood_t : public pet_melee_attack_t<blood_beast_pet_t>
   {
     corrupted_blood_t( blood_beast_pet_t* p, std::string_view options_str )
-      : pet_melee_attack_t( p, "corrupted_blood", p->dk()->pet_spell.corrupted_blood )
+      : pet_melee_attack_t<blood_beast_pet_t>( p, "corrupted_blood", p->dk()->pet_spell.corrupted_blood )
     {
       parse_options( options_str );
       aoe                = -1;
@@ -3953,7 +3981,7 @@ struct blood_beast_pet_t : public death_knight_pet_t
 
     void impact( action_state_t* state ) override
     {
-      pet_melee_attack_t::impact( state );
+      pet_melee_attack_t<blood_beast_pet_t>::impact( state );
       if ( state->result_amount > 0 )
       {
         pet()->accumulator += state->result_amount;
@@ -3973,7 +4001,7 @@ struct blood_beast_pet_t : public death_knight_pet_t
                                       : dk()->talent.sanlayn.the_blood_is_life->effectN( 2 ).percent();
   }
 
-  void dismiss( bool expired = false ) override
+  void demise() override
   {
     if ( !sim->event_mgr.canceled )
     {
@@ -3981,7 +4009,7 @@ struct blood_beast_pet_t : public death_knight_pet_t
       accumulator = 0;
     }
 
-    pet_t::dismiss( expired );
+    death_knight_pet_t::demise();
   }
 
   resource_e primary_resource() const override
@@ -3999,11 +4027,6 @@ struct blood_beast_pet_t : public death_knight_pet_t
   {
     death_knight_pet_t::reset();
     accumulator = 0;
-  }
-
-  void init_spells() override
-  {
-    death_knight_pet_t::init_spells();
   }
 
   void init_action_list() override
@@ -4199,11 +4222,13 @@ struct mograine_pet_t final : public horseman_pet_t
   struct dnd_aura_t final : public buff_t
   {
     dnd_aura_t( horseman_pet_t* p )
-      : buff_t( p, "death_and_decay", p->dk()->pet_spell.mograines_death_and_decay ), dk( p->dk() )
+      : buff_t( p, "death_and_decay", p->dk()->pet_spell.mograines_death_and_decay ),
+        dk( p->dk() ),
+        dnd_damage( get_action<dnd_damage_mograine_t>( "death_and_decay", p ) )
     {
       set_tick_zero( true );
       set_tick_callback( [ this ]( buff_t* /* buff */, int /* total_ticks */, timespan_t /* tick_time */ ) {
-        dk->active_spells.mograines_death_and_decay->execute();
+        dnd_damage->execute();
       } );
     }
 
@@ -4240,6 +4265,7 @@ struct mograine_pet_t final : public horseman_pet_t
 
   private:
     death_knight_t* dk;
+    propagate_const<action_t*> dnd_damage;
   };
 
   struct heart_strike_mograine_t final : public horseman_melee_t
@@ -4254,7 +4280,7 @@ struct mograine_pet_t final : public horseman_pet_t
   void create_buffs() override
   {
     death_knight_pet_t::create_buffs();
-    dnd_aura = new dnd_aura_t( this );
+    dnd_aura = make_buff<dnd_aura_t>( this );
   }
 
   mograine_pet_t( death_knight_t* owner ) : horseman_pet_t( owner, "mograine" )
@@ -4264,12 +4290,6 @@ struct mograine_pet_t final : public horseman_pet_t
     main_hand_weapon.swing_time = 2_s;
     off_hand_weapon.type        = WEAPON_BEAST;
     off_hand_weapon.swing_time  = 2_s;
-  }
-
-  void init_spells() override
-  {
-    horseman_pet_t::init_spells();
-    dk()->active_spells.mograines_death_and_decay = get_action<dnd_damage_mograine_t>( "death_and_decay", this );
   }
 
   void arise() override
@@ -4296,7 +4316,7 @@ struct mograine_pet_t final : public horseman_pet_t
   }
 
 public:
-  buff_t* dnd_aura;
+  propagate_const<buff_t*> dnd_aura;
   bool extended_by_apoc_now = false;
 };
 
@@ -4496,7 +4516,7 @@ struct abomination_pet_t : public death_knight_pet_t
 
   struct abomination_melee_t : public auto_attack_melee_t<abomination_pet_t>
   {
-    abomination_melee_t( abomination_pet_t* p, std::string_view name ) : auto_attack_melee_t( p, name )
+    abomination_melee_t( abomination_pet_t* p ) : auto_attack_melee_t<abomination_pet_t>( p )
     {
     }
 
@@ -4509,12 +4529,12 @@ struct abomination_pet_t : public death_knight_pet_t
         if ( !td->dot.virulent_plague->is_ticking() )
           pet()->disease_cloud->execute_on_target( t );
       }
-      auto_attack_melee_t::execute();
+      auto_attack_melee_t<abomination_pet_t>::execute();
     }
 
     void impact( action_state_t* state ) override
     {
-      auto_attack_melee_t::impact( state );
+      auto_attack_melee_t<abomination_pet_t>::impact( state );
       if ( state->result_amount > 0 )
       {
         pet()->dk()->trigger_festering_wound( state, 1, pet()->dk()->procs.fw_abomination );
@@ -4547,11 +4567,11 @@ struct abomination_pet_t : public death_knight_pet_t
 
   attack_t* create_main_hand_auto_attack() override
   {
-    return new abomination_melee_t( this, "main_hand" );
+    return new abomination_melee_t( this );
   }
 
 private:
-  action_t* disease_cloud;
+  propagate_const<action_t*> disease_cloud;
 };
 
 }  // namespace pets
@@ -4599,7 +4619,7 @@ struct death_knight_action_t : public parse_action_effects_t<Base>
   using action_base_t = parse_action_effects_t<Base>;
   using base_t        = death_knight_action_t<Base>;
 
-  gain_t* gain;
+  propagate_const<gain_t*> gain;
   bool hasted_gcd;
   double rp_per_tick;
 
@@ -5700,7 +5720,12 @@ struct ams_parent_buff_t : public death_knight_absorb_buff_t
     max_absorb *= 1.0 + p()->talent.gloom_ward->effectN( 1 ).percent();
 
     if ( horsemen )
-      max_absorb *= 0.8;
+    {
+      if ( player->is_ptr() )
+        max_absorb *= p()->talent.rider.horsemens_aid->effectN( 1 ).percent();
+      else
+        max_absorb *= 0.8;
+    }
 
     return max_absorb;
   }
@@ -6346,8 +6371,7 @@ public:
 
 struct undeath_dot_t final : public death_knight_spell_t
 {
-  undeath_dot_t( std::string_view name, death_knight_t* p )
-    : death_knight_spell_t( name, p, p->pet_spell.undeath_dot )
+  undeath_dot_t( std::string_view name, death_knight_t* p ) : death_knight_spell_t( name, p, p->pet_spell.undeath_dot )
   {
     background = true;
     may_miss = may_dodge = may_parry = false;
@@ -7600,7 +7624,8 @@ struct chill_streak_damage_t final : public death_knight_spell_t
       return;
     }
 
-    if ( p()->talent.frost.enduring_chill.ok() && rng().roll( enduring_chill_chance ) )
+    if ( p()->talent.frost.enduring_chill.ok() && rng().roll( enduring_chill_chance ) &&
+           p()->sim->target_non_sleeping_list.size() != 1 )
     {
       current--;
       p()->procs.enduring_chill->occur();
@@ -8428,11 +8453,13 @@ struct death_strike_t final : public death_knight_melee_attack_t
     // No spelldata either, just "increase damage based on target's missing health"
     // Update 2021-06-16 Changed from 1% to 1.25% damage increase
     // Testing shows a linear 1.25% damage increase for every 1% missing health
-    // Unholy Bond increases this by 10% per point, with the formula 1 + ( 0.25 * ( 1 + unholy_bond % ) )
+    // Unholy Bond increases this by 20% with the formula 1 + ( 0.25 * ( 1 + unholy_bond % ) )
     if ( p()->runeforge.rune_of_sanguination )
     {
       m *= 1.0 + std::min( ( 1.0 - target->health_percentage() * 0.01 ) * sanguination_pct,
                            ( sanguination_pct * 80 ) * 0.01 );
+      // Unholy bond gives a 20% bonus to damage, on top of the 20% bonus to the sanguination scaled damage
+      m *= 1.0 + p()->talent.unholy_bond->effectN( 1 ).percent();
     }
 
     return m;
@@ -11979,7 +12006,7 @@ void death_knight_t::trigger_infliction_of_sorrow( player_t* target, bool is_vam
 
 void death_knight_t::trigger_vampiric_strike_proc( player_t* target )
 {
-  double chance    = talent.sanlayn.vampiric_strike->effectN( 1 ).percent();
+  double chance    = modified_spell.vampiric_strike->effectN( 1 ).percent();
   double target_hp = target->health_percentage();
 
   if ( talent.sanlayn.sanguine_scent.ok() && target_hp <= talent.sanlayn.sanguine_scent->effectN( 1 ).base_value() )
@@ -12116,7 +12143,7 @@ void death_knight_t::trigger_drw_action( drw_actions action )
     return;
 
   drw_action_execute( pets.everlasting_bond_pet.active_pet(), action );
-};
+}
 
 double death_knight_t::psuedo_random_p_from_c( double c )
 {
@@ -12751,7 +12778,9 @@ void death_knight_t::create_pets()
     {
       pets.army_magus.set_creation_callback(
           []( death_knight_t* p ) { return new pets::magus_pet_t( p, "army_magus" ); } );
-      pets.army_magus.set_default_duration( talent.unholy.army_of_the_dead->effectN( 1 ).trigger()->duration() );
+      const spell_data_t* summon_spell =
+          talent.unholy.raise_abomination.ok() ? talent.unholy.raise_abomination : talent.unholy.army_of_the_dead->effectN( 1 ).trigger();
+      pets.army_magus.set_default_duration( summon_spell->duration() );
       pets.army_magus.set_max_pets( 1 );
     }
 
@@ -14750,6 +14779,18 @@ void pets::pet_action_t<T_PET, Base>::apply_pet_action_effects()
   // Rider of the Apocalypse
   parse_effects( dk()->buffs.mograines_might );
   parse_effects( dk()->buffs.a_feast_of_souls );
+
+  // San'layn
+  parse_effects(
+      dk()->buffs.essence_of_the_blood_queen,
+      [ & ]( double v ) {
+        if ( dk()->spec.blood_death_knight->ok() )
+          v += dk()->spec.blood_death_knight->effectN( 19 ).percent();
+        if ( dk()->buffs.gift_of_the_sanlayn->check() )
+          v *= 1.0 + dk()->buffs.gift_of_the_sanlayn->check_value();
+        return v;
+      },
+      dk()->talent.sanlayn.frenzied_bloodthirst );
 }
 
 template <class T_PET, class Base>
@@ -14787,6 +14828,9 @@ void death_knight_t::apply_effect_modifying_effects()
 {
   modified_spell.infliction_of_sorrow =
       get_modified_spell( talent.sanlayn.infliction_of_sorrow )->parse_effects( spec.blood_death_knight );
+
+  modified_spell.vampiric_strike =
+      get_modified_spell( talent.sanlayn.vampiric_strike )->parse_effects( spec.blood_death_knight );
 }
 
 template <class Base>

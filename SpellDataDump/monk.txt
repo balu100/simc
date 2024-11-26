@@ -1,4 +1,4 @@
-SimulationCraft 1100-02 for World of Warcraft 11.0.5.57212 Live
+SimulationCraft 1100-02 for World of Warcraft 11.0.5.57689 Live
 Name             : Dual Wield (desc=Passive) (id=674) [Passive] 
 Class            : Frost Death Knight, Warrior, Hunter, Rogue, Monk, Demon Hunter
 School           : Physical
@@ -1533,6 +1533,7 @@ Class            : Monk
 School           : Nature
 Spell Type       : Magic
 Duration         : 30 seconds
+Cooldown         : 1 seconds
 Charges          : 1 (30 seconds cooldown)
 Category         : 2294 (Type 0x0): Heart of the Jade Serpent (443421 effect#7), Heart of the Jade Serpent (443616 effect#7), Endless Draught (450892 effect#1)
 Labels           : 16: Class Spells
@@ -1817,7 +1818,8 @@ Family Flags     : 20, 103
 Attributes       : Active Threat (94), Not a Proc (105), Not In Spellbook (143), Do Not Display Duration (170), Area Effects Use Target Radius (328), Allow Class Ability Procs (416)
 Effects          :
 #1 (id=133162)   : School Damage (2): physical
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 1.15 | Radius: 0 - 8 yards | Target: At Self (22) -> Cone Enemy (24)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 1.38 | Radius: 0 - 8 yards | Target: At Self (22) -> Cone Enemy (24)
+Hotfixed         : AP Coefficient (1.15 -> 1.38)
 #2 (id=155264)   : Trigger Spell (64): Fists of Fury Visual Target
                    Base Value: 0 | Scaled Value: 0 | Trigger Spell: 123154 | Radius: 0 - 8 yards | Target: At Self (22) -> Cone Enemy (24)
 Description      : $@spelldesc113656
@@ -3538,11 +3540,11 @@ Labels           : 16: Class Spells
 Attributes       : Is Ability (4), Passive (6), Do Not Display (Spellbook, Aura Icon, Combat Log) (7), Do Not Log (8), Allow Class Ability Procs (416)
 Effects          :
 #1 (id=179708)   : Apply Aura (6) | Add Percent Modifier (108): Spell Direct Amount (0)
-                   Base Value: 3 | Scaled Value: 3 | Target: Self (1)
+                   Base Value: 9 | Scaled Value: 9 | Target: Self (1)
                    Affected Spells: Soothing Mist (115175), Revival (115310), Vivify (116670), Renewing Mist (119611), Enveloping Mist (124682), Chi Burst (130654), Chi Wave (132463), Refreshing Jade Wind (162530), Gust of Mists (191894), Zen Pulse (198487), Soothing Mist (198533), Surging Mist (227344), Overflowing Mists (273354), Enveloping Mist (274062), Strength of Spirit (274774), Rising Mist (274912), Burst of Life (278564), Revival (297850), Weapons of Order (311123), Expel Harm (322101), Enveloping Breath (325209), Gust of Mists (328748), Yu'lon's Whisper (337268), Tear of Morning (337993), Soothing Breath (343737), Gust of Mists (343819), Faeline Stomp (345727), Enveloping Breath (358560), Tear of Morning (387995), Yu'lon's Whisper (388044), Jadefire Stomp (388207), Overflowing Mists (388514), Restoral (388615), Zen Pulse (388668), Burst of Life (399230), Sheilun's Gift (399491), Thunderous Focus Tea (407058), Invigorating Mists (425804), Celestial Conduit (443039), Flight of the Red Crane (443272), Flight of the Red Crane (443614), Renewing Mist (448430), Mantra of Purity (451452), Expel Harm (451968)
                    Family Flags: 48
 #2 (id=191104)   : Apply Aura (6) | Add Percent Modifier (108): Spell Periodic Amount (22)
-                   Base Value: 3 | Scaled Value: 3 | Misc Value: 22 | Target: Self (1)
+                   Base Value: 9 | Scaled Value: 9 | Misc Value: 22 | Target: Self (1)
                    Affected Spells: Soothing Mist (115175), Revival (115310), Vivify (116670), Renewing Mist (119611), Enveloping Mist (124682), Chi Burst (130654), Chi Wave (132463), Refreshing Jade Wind (162530), Gust of Mists (191894), Zen Pulse (198487), Soothing Mist (198533), Surging Mist (227344), Overflowing Mists (273354), Enveloping Mist (274062), Strength of Spirit (274774), Rising Mist (274912), Burst of Life (278564), Revival (297850), Weapons of Order (311123), Expel Harm (322101), Enveloping Breath (325209), Gust of Mists (328748), Yu'lon's Whisper (337268), Tear of Morning (337993), Soothing Breath (343737), Gust of Mists (343819), Faeline Stomp (345727), Enveloping Breath (358560), Tear of Morning (387995), Yu'lon's Whisper (388044), Jadefire Stomp (388207), Overflowing Mists (388514), Restoral (388615), Zen Pulse (388668), Burst of Life (399230), Sheilun's Gift (399491), Thunderous Focus Tea (407058), Invigorating Mists (425804), Celestial Conduit (443039), Flight of the Red Crane (443272), Flight of the Red Crane (443614), Renewing Mist (448430), Mantra of Purity (451452), Expel Harm (451968)
                    Family Flags: 48
 #3 (id=191105)   : Apply Aura (6) | Unknown(312)
@@ -3723,9 +3725,10 @@ Effects          :
                    Base Value: -4 | Scaled Value: -4 | Misc Value: 12 | Misc Value 2: 2917 (Label) | Target: Self (1)
                    Affected Spells (Label): Yu'lon's Grace (414131)
 #24 (id=1080993) : Apply Aura (6) | Add Percent Modifier (108): Spell Direct Amount (0)
-                   Base Value: 32 | Scaled Value: 32 | Target: Self (1)
+                   Base Value: 43 | Scaled Value: 43 | Target: Self (1)
                    Affected Spells: Blackout Kick (100784), Blackout Kick (205523), Blackout Kick (228649)
                    Family Flags: 4
+Hotfixed         : Base Value (32 -> 43)
 #25 (id=1082767) : Apply Aura (6) | Apply Percent Modifier w/ Label (218): Spell Direct Amount (0)
                    Base Value: -90 | Scaled Value: -90 | Misc Value 2: 3448 (Label) | Target: Self (1)
                    Affected Spells (Label): Celestial Conduit (443039)
@@ -10316,7 +10319,7 @@ Effects          :
 #1 (id=1023475)  : Apply Aura (6) | Modify Total Stat% (137)
                    Base Value: 5 | Scaled Value: 5 | Misc Value 2: 0x4 | Target: Self (1)
 #2 (id=1180344)  : Apply Aura (6) | Apply Flat Modifier w/ Label (219): Spell Effect 1 (3)
-                   Base Value: 140 | Scaled Value: 140 | Misc Value: 3 | Misc Value 2: 2577 (Label) | Target: Self (1)
+                   Base Value: 160 | Scaled Value: 160 | Misc Value: 3 | Misc Value 2: 2577 (Label) | Target: Self (1)
                    Affected Spells (Label): Ancient Teachings (388023)
 Description      : $@spelldesc467293
 Tooltip          : Ancient Teachings transfers an additional $w2% damage to healing.
@@ -10336,7 +10339,7 @@ Labels           : 16: Class Spells
 Attributes       : Passive (6), Not In Spellbook (143)
 Effects          :
 #1 (id=1023483)  : Apply Aura (6) | Dummy (4)
-                   Base Value: 60 | Scaled Value: 60 | Misc Value 2: 0x471 | Target: Self (1)
+                   Base Value: 20 | Scaled Value: 20 | Misc Value 2: 0x471 | Target: Self (1)
 #2 (id=1023484)  : Apply Aura (6) | Dummy (4)
                    Base Value: -500 | Scaled Value: -500 | Target: Self (1)
 #3 (id=1147040)  : Apply Aura (6) | Dummy (4)
@@ -10390,7 +10393,7 @@ Family Flags     : 48
 Attributes       : Do Not Display Range (126)
 Effects          :
 #1 (id=1023503)  : Direct Heal (10)
-                   Base Value: 0 | Scaled Value: 0 (delta=0.05) | SP Coefficient: 0.0455 | Radius: 15 yards | Target: Cone to Friendly (136)
+                   Base Value: 0 | Scaled Value: 0 (delta=0.05) | SP Coefficient: 0.182 | Radius: 15 yards | Target: Cone to Friendly (136)
 Description      : $@spelldesc388038
 
 Name             : Jadefire Stomp (id=388193) [Spell Family (53)] 
@@ -11047,7 +11050,6 @@ Variables        : $shield=${($SP*11)*(1+$@versadmg)}
 $newshield=${$MHP*$116680s8/100*(1+$@versadmg)}
 
 Name             : Tea of Plenty (id=388525) [Spell Family (53)] 
-Hotfixed         : Attributes
 Class            : Monk
 School           : Nature
 Spell Type       : Magic
@@ -11378,7 +11380,7 @@ Attributes       : Passive (6), Not In Spellbook (143)
 Aura Interrupt   : Leave World (19), Enter World (22), Change Specialization (38), Change Talent (46)
 Effects          :
 #1 (id=1024677)  : Apply Aura (6) | Dummy (4)
-                   Base Value: 90 | Scaled Value: 90 | Target: Self (1)
+                   Base Value: 110 | Scaled Value: 110 | Target: Self (1)
 #2 (id=1024678)  : Dummy (3)
                    Base Value: 100 | Scaled Value: 100
 #3 (id=1024679)  : Apply Aura (6) | Dummy (4)
@@ -12092,11 +12094,13 @@ Effects          :
                    Affected Spells: Blackout Kick (100784), Blackout Kick (205523), Blackout Kick (228649)
                    Family Flags: 4
 #2 (id=1031599)  : Apply Aura (6) | Add Percent Modifier (108): Spell Direct Amount (0)
-                   Base Value: 10 | Scaled Value: 10 | Target: Self (1)
+                   Base Value: 20 | Scaled Value: 20 | Target: Self (1)
                    Affected Spells: Blackout Kick (100784), Blackout Kick (205523), Blackout Kick (228649)
                    Family Flags: 4
+Hotfixed         : Base Value (10 -> 20)
 #3 (id=1155573)  : Apply Aura (6) | Dummy (4)
-                   Base Value: 70 | Scaled Value: 70 | Target: Self (1)
+                   Base Value: 80 | Scaled Value: 80 | Target: Self (1)
+Hotfixed         : Base Value (70 -> 80)
 Description      : Blackout Kick damage increased by $s2% and strikes an additional $s1 $ltarget;targets at $s3% effectiveness.
 
 Name             : Strike of the Windlord (id=392983) [Spell Family (53)] 
@@ -14254,7 +14258,8 @@ Attributes       : Can Proc From Procs (122), Do Not Display Duration (170), Aur
 Aura Interrupt   : Change Specialization (38), Change Talent (46)
 Effects          :
 #1 (id=1120518)  : Apply Aura (6) | Modify Dodge% (49)
-                   Base Value: 10 | Scaled Value: 10 | Target: Self (1)
+                   Base Value: 10 | Scaled Value: 10 | PvP Coefficient: 0.2 | Target: Self (1)
+Hotfixed         : PvP Coefficient (1 -> 0.2)
 Description      : $@spelldesc432181
 Tooltip          : Your dodge chance is increased by $w1% until you dodge an attack.
 
@@ -14762,7 +14767,8 @@ Family Flags     : 103
 Attributes       : Is Ability (4), Allow Class Ability Procs (416)
 Effects          :
 #1 (id=1138821)  : School Damage (2): nature
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 1 | Radius: 0 - 10 yards | Target: At Enemy (53) -> At Enemy in Area (16)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 2 | Radius: 0 - 10 yards | Target: At Enemy (53) -> At Enemy in Area (16)
+Hotfixed         : AP Coefficient (1 -> 2)
 Description      : $@spelldesc443110
 
 Name             : Flight of the Red Crane (id=443255) [Spell Family (53), Passive] 
@@ -14799,7 +14805,8 @@ Family Flags     : 36, 103
 Attributes       : Bouncy Chain Missiles (146), Allow Class Ability Procs (416), Chain by Most Hit (440)
 Effects          :
 #1 (id=1139056)  : School Damage (2): physical
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 1 | Chain Multiplier: 1 | Chain Targets: 5 | Target: Enemy (6)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 2 | Chain Multiplier: 1 | Chain Targets: 5 | Target: Enemy (6)
+Hotfixed         : AP Coefficient (1 -> 2)
 Description      : $@spelldesc443255
 
 Name             : Flight of the Red Crane (id=443272) [Spell Family (53)] 
@@ -15117,7 +15124,8 @@ Family Flags     : 36, 103
 Attributes       : Bouncy Chain Missiles (146), Allow Class Ability Procs (416), Chain by Most Hit (440)
 Effects          :
 #1 (id=1139667)  : School Damage (2): physical
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 2 | Chain Multiplier: 1 | Chain Targets: 5 | Target: Enemy (6)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 4 | Chain Multiplier: 1 | Chain Targets: 5 | Target: Enemy (6)
+Hotfixed         : AP Coefficient (2 -> 4)
 Description      : $@spelldesc443260
 
 Name             : Flight of the Red Crane (id=443614) [Spell Family (53)] 
@@ -17208,9 +17216,10 @@ Labels           : 16: Class Spells
 Attributes       : Passive (6), Not In Spellbook (143)
 Effects          :
 #1 (id=1152125)  : Apply Aura (6) | Add Flat Modifier (107): Spell Effect 3 (23)
-                   Base Value: 125 | Scaled Value: 125 | PvP Coefficient: 0.6 | Misc Value: 23 | Target: Self (1)
+                   Base Value: 200 | Scaled Value: 200 | PvP Coefficient: 0.6 | Misc Value: 23 | Target: Self (1)
                    Affected Spells: Blackout Kick! (116768)
                    Family Flags: 21
+Hotfixed         : Base Value (125 -> 200)
 Description      : The Blackout Kick! effect also increases the damage of your next Blackout Kick by $s1%.
 
 Name             : Energy Burst (id=451498) [Spell Family (53), Passive] 
@@ -17675,7 +17684,8 @@ Family Flags     : 103
 Attributes       : Suppress Weapon Procs (151), Aura Points On Client (268), Area Effects Use Target Radius (328)
 Effects          :
 #1 (id=1153059)  : School Damage (2): physical
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 0.28 | Radius: 10 yards | Target: Cone to Enemy (104)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 0.392 | Radius: 10 yards | Target: Cone to Enemy (104)
+Hotfixed         : AP Coefficient (0.28 -> 0.392)
 Description      : $@spelldesc452137
 
 Name             : Flurry of Xuen (id=452137) [Spell Family (53), Passive, Hidden] 
@@ -18429,7 +18439,8 @@ Family Flags     : 36, 103
 Attributes       : Is Ability (4), Allow Class Ability Procs (416)
 Effects          :
 #1 (id=1163531)  : School Damage (2): physical
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 2.5 | Target: Enemy (6)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 3.375 | Target: Enemy (6)
+Hotfixed         : AP Coefficient (2.5 -> 3.375)
 Description      : $@spelldesc443087
 
 Name             : Jadefire Fists (id=457974) [Spell Family (53), Passive] 
@@ -18926,13 +18937,13 @@ Attributes       : Aura Points On Client (268)
 Aura Interrupt   : Leave World (19), Enter World (22), Change Specialization (38), Raid Encounter Start or M+ Start (40), Change Talent (46)
 Effects          :
 #1 (id=1180408)  : Apply Aura (6) | Dummy (4) | Attributes: Suppress Points Stacking (6)
-                   Base Value: 4 | Scaled Value: 4 | Target: Self (1)
+                   Base Value: 4 | Scaled Value: 4 | PvP Coefficient: 0.5 | Target: Self (1)
 #2 (id=1180409)  : Apply Aura (6) | Add Percent Modifier (108): Spell Periodic Amount (22) | Attributes: Suppress Points Stacking (6)
                    Base Value: 800 | Scaled Value: 800 | Misc Value: 22 | Target: Self (1)
                    Affected Spells: Crackling Jade Lightning (117952)
                    Family Flags: 32
 #3 (id=1190455)  : Apply Aura (6) | Add Flat Modifier (107): Spell Targets (17) | Attributes: Suppress Points Stacking (6)
-                   Base Value: 5 | Scaled Value: 5 | Misc Value: 17 | Target: Self (1)
+                   Base Value: 5 | Scaled Value: 5 | PvP Coefficient: 0.4 | Misc Value: 17 | Target: Self (1)
                    Affected Spells: Crackling Jade Lightning (117952)
                    Family Flags: 32
 Description      : $@spelldesc467316
@@ -18949,7 +18960,7 @@ Labels           : 16: Class Spells
 Attributes       : Aura Points On Client (268), Allow Class Ability Procs (416), Periodic Refresh Extends Duration (436)
 Effects          :
 #1 (id=1180452)  : Apply Aura (6) | Add Percent Modifier (108): Spell Periodic Amount (22)
-                   Base Value: 50 | Scaled Value: 50 | Misc Value: 22 | Target: Self (1)
+                   Base Value: 100 | Scaled Value: 100 | Misc Value: 22 | Target: Self (1)
                    Affected Spells: Renewing Mist (115151), Renewing Mist (119611), Renewing Mist (448430)
                    Family Flags: 23
 Description      : $@spelldesc467307
@@ -18968,7 +18979,7 @@ Family Flags     : 39
 Attributes       : Not Shapeshifted (16), Initiates Combat (Enables Auto-Attack) (41), Allow Class Ability Procs (416)
 Effects          :
 #1 (id=1181673)  : School Damage (2): nature
-                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 1.438 | PvP Coefficient: 3 | Radius: 25 yards | Target: Cone to Enemy (104)
+                   Base Value: 0 | Scaled Value: 0 | AP Coefficient: 3.595 | PvP Coefficient: 1.2 | Radius: 25 yards | Target: Cone to Enemy (104)
 Description      : $@spelldesc467307
 
 Name             : Glyph of Tiger Palm (id=468605) [Spell Family (53)] 

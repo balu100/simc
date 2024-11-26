@@ -783,6 +783,7 @@ struct evoker_t : public player_t
     timespan_t simulate_bombardments_time_between_procs_stddev = 0.10_s;
     timespan_t allied_virtual_cd_time                          = 118_s;
     double simulate_bombardments_fixed_crit                    = 0.21;
+    int flameshaper_extra_dots                                 = 0;
   } option;
 
   // Action pointers
@@ -1160,6 +1161,8 @@ struct evoker_t : public player_t
   {
     propagate_const<proc_t*> ruby_essence_burst;
     propagate_const<proc_t*> azure_essence_burst;
+    propagate_const<proc_t*> titanic_precision_ruby_essence_burst;
+    propagate_const<proc_t*> titanic_precision_azure_essence_burst;
     propagate_const<proc_t*> emerald_trance;
     propagate_const<proc_t*> anachronism_essence_burst;
     propagate_const<proc_t*> echoing_strike;
@@ -1258,7 +1261,8 @@ struct evoker_t : public player_t
   void bounce_naszuro( player_t*, timespan_t );
 
   // Augmentation Helpers
-  void spawn_mote_of_possibility( player_t* = nullptr, timespan_t = timespan_t::zero() );
+  void spawn_mote_of_possibility( player_t* = nullptr, mote_buffs_e = mote_buffs_e::MAX,
+                                  timespan_t = timespan_t::zero() );
   void extend_ebon( timespan_t );
   double get_molten_embers_multiplier( player_t*, bool = false) const;
   void apply_bombardments( player_t* );
@@ -2031,7 +2035,7 @@ struct essence_base_t : public BASE
   {
     BASE::execute();
 
-    if ( BASE::p()->talent.chronowarden.master_of_destiny.ok() && BASE::base_costs[ RESOURCE_ESSENCE ] > 0 )
+    if ( !BASE::background && BASE::p()->talent.chronowarden.master_of_destiny.ok() && BASE::base_costs[ RESOURCE_ESSENCE ] > 0 )
     {
       for ( auto& b : BASE::p()->allied_thread_of_fate_buffs )
       {
@@ -2042,7 +2046,7 @@ struct essence_base_t : public BASE
       }
     }
 
-    if ( BASE::p()->talent.chronowarden.time_convergence.ok() )
+    if ( !BASE::background && BASE::p()->talent.chronowarden.time_convergence.ok() )
     {
       if ( BASE::p()->buff.time_convergence_intellect->check() )
       {
@@ -2050,7 +2054,7 @@ struct essence_base_t : public BASE
       }
     }
 
-    if ( BASE::p()->talent.scalecommander.extended_battle.ok() && BASE::base_costs[ RESOURCE_ESSENCE ] > 0 )
+    if ( !BASE::background && BASE::p()->talent.scalecommander.extended_battle.ok() && BASE::base_costs[ RESOURCE_ESSENCE ] > 0 )
     {
       for ( auto p_ : BASE::sim->target_non_sleeping_list )
       {
@@ -3914,7 +3918,7 @@ struct azure_strike_t : public evoker_spell_t
          rng().roll( rng().roll( eb_chance ) ) )
     {
       p()->buff.essence_burst->trigger();
-      p()->proc.azure_essence_burst->occur();
+      p()->proc.titanic_precision_azure_essence_burst->occur();
     }
 
     if ( p()->talent.azure_essence_burst.ok() && ( p()->buff.dragonrage->up() || rng().roll( eb_chance ) ) )
@@ -4726,7 +4730,7 @@ struct living_flame_t : public evoker_spell_t
              rng().roll( composite_target_crit_chance( target ) && rng().roll( eb_chance ) ) )
         {
           p()->buff.essence_burst->trigger();
-          p()->proc.ruby_essence_burst->occur();
+          p()->proc.titanic_precision_ruby_essence_burst->occur();
         }
 
         if ( p()->buff.dragonrage->up() || rng().roll( eb_chance ) )
@@ -6142,9 +6146,10 @@ struct engulf_t : public evoker_spell_t
       const evoker_td_t* td = p()->find_target_data( target );
 
       if ( !td )
-        return 0;
+        return p()->option.flameshaper_extra_dots;
 
-      return td->dots.fire_breath->is_ticking() + td->dots.fire_breath_traveling_flame->is_ticking() + td->dots.enkindle->is_ticking() +
+      return p()->option.flameshaper_extra_dots + td->dots.fire_breath->is_ticking() +
+             td->dots.fire_breath_traveling_flame->is_ticking() + td->dots.enkindle->is_ticking() +
              td->dots.living_flame->is_ticking();
     }
 
@@ -7713,21 +7718,23 @@ void evoker_t::init_gains()
   player_t::init_gains();
 
   gain.roar_of_exhilaration = get_gain( "Roar of Exhilaration" );
-  gain.energizing_flame = get_gain( "Energizing Flame" );
+  gain.energizing_flame     = get_gain( "Energizing Flame" );
 }
 
 void evoker_t::init_procs()
 {
   player_t::init_procs();
 
-  proc.ruby_essence_burst         = get_proc( "Ruby Essence Burst" );
-  proc.azure_essence_burst        = get_proc( "Azure Essence Burst" );
-  proc.emerald_trance             = get_proc( "Emerald Trance" );
-  proc.anachronism_essence_burst  = get_proc( "Anachronism" );
-  proc.echoing_strike             = get_proc( "Echoing Strike" );
-  proc.overwritten_leaping_flames = get_proc( "Overwritten Leaping Flames" );
-  proc.diverted_power             = get_proc( "Diverted Power" );
-  proc.destroyers_scarred_wards   = get_proc( "Evoker Devastation 11.0 Class Set 4pc" );
+  proc.ruby_essence_burst                    = get_proc( "Ruby Essence Burst" );
+  proc.azure_essence_burst                   = get_proc( "Azure Essence Burst" );
+  proc.titanic_precision_ruby_essence_burst  = get_proc( "Titanic Precision Ruby Essence Burst" );
+  proc.titanic_precision_azure_essence_burst = get_proc( "Titanic Precision Azure Essence Burst" );
+  proc.emerald_trance                        = get_proc( "Emerald Trance" );
+  proc.anachronism_essence_burst             = get_proc( "Anachronism" );
+  proc.echoing_strike                        = get_proc( "Echoing Strike" );
+  proc.overwritten_leaping_flames            = get_proc( "Overwritten Leaping Flames" );
+  proc.diverted_power                        = get_proc( "Diverted Power" );
+  proc.destroyers_scarred_wards              = get_proc( "Evoker Devastation 11.0 Class Set 4pc" );
 }
 
 void evoker_t::init_base_stats()
@@ -8427,6 +8434,7 @@ void evoker_t::create_options()
   add_option( opt_timespan( "evoker.allied_virtual_cd_time", option.allied_virtual_cd_time, 0_s, 9999_s ) );
   add_option(
       opt_float( "evoker.simulate_bombardments_fixed_crit", option.simulate_bombardments_fixed_crit, 0.05, 1.0 ) );
+  add_option( opt_int( "evoker.flameshaper_extra_dots", option.flameshaper_extra_dots, 0, 4096 ) );
 }
 
 void evoker_t::analyze( sim_t& sim )
@@ -8922,43 +8930,83 @@ void evoker_t::bounce_naszuro( player_t* s, timespan_t remains = timespan_t::min
   get_target_data( p )->buffs.unbound_surge->trigger( remains );
 }
 
-void evoker_t::spawn_mote_of_possibility( player_t* prospective_player, timespan_t delay )
+void evoker_t::spawn_mote_of_possibility( player_t* prospective_player, mote_buffs_e mote_buff, timespan_t delay )
 {
   player_t* target = prospective_player;
 
   if ( target && target->is_sleeping() )
     target = nullptr;
 
-  if ( !target && allies_with_my_ebon.size() > 0 )
+  if ( mote_buff == mote_buffs_e::MAX )
+    mote_buff = mote_buffs_e( rng().range<unsigned>( mote_buffs_e::MAX ) );
+
+  if ( target )
   {
-    target = allies_with_my_ebon[ rng().range<size_t>( allies_with_my_ebon.size() ) ];
+    auto td = get_target_data( target );
+    switch ( mote_buff )
+    {
+      case mote_buffs_e::INFERNOS_BLESSING:
+        td->buffs.infernos_blessing->trigger();
+        return;
+      case mote_buffs_e::SHIFTING_SANDS:
+        td->buffs.shifting_sands->current_value = cache.mastery_value();
+        td->buffs.shifting_sands->trigger();
+        return;
+      default:
+        return;
+    }
   }
-
-  if ( !target )
+  else
   {
-    // Use loose Exponential Backoff to delay the event until Ebon Might becomes active.
-    timespan_t new_delay = rng().range( 0_s, 1_s ) + delay * 1.1;
-    make_event( sim, new_delay, [ this, new_delay ] { spawn_mote_of_possibility( nullptr, new_delay ); } );
-    return;
+    switch ( mote_buff )
+    {
+      case mote_buffs_e::INFERNOS_BLESSING:
+        get_target_data( this )->buffs.infernos_blessing->trigger();
+        return;
+      case mote_buffs_e::SYMBIOTIC_BLOOM:
+        return;
+      case mote_buffs_e::SHIFTING_SANDS:
+        if ( !target && allies_with_my_ebon.size() > 0 )
+        {
+          std::vector<player_t*> helper = allies_with_my_ebon.data();
+          rng().shuffle( helper.begin(), helper.end() );
+          auto it = range::partition( helper, [ this ]( player_t* t ) { 
+              return !get_target_data( t )->buffs.shifting_sands->check();
+          } );
+          
+          if ( it != helper.begin() )
+          {
+            std::partition( helper.begin(), it, [ this ]( player_t* t ) {
+              return t->role != ROLE_HYBRID && t->role != ROLE_HEAL && t->role != ROLE_TANK &&
+                     t->specialization() != EVOKER_AUGMENTATION;
+            } );
+          }
+          else
+          {
+            spawn_mote_of_possibility( this, mote_buff );
+            return;
+          }
+
+          auto td                                 = get_target_data( helper.front() );
+          td->buffs.shifting_sands->current_value = cache.mastery_value();
+          td->buffs.shifting_sands->trigger();
+        }
+        else
+        {
+          // Use loose Exponential Backoff to delay the event until Ebon Might becomes active.
+          timespan_t new_delay = rng().range( 0_s, 1_s ) + delay * 1.1;
+          make_event( sim, new_delay,
+                      [ this, mote_buff, new_delay ] { spawn_mote_of_possibility( nullptr, mote_buff, new_delay ); } );
+          return;
+        }
+        return;
+      default:
+        return;
+    }
   }
+  
 
-  auto td = get_target_data( target );
 
-  mote_buffs_e mote_buff = mote_buffs_e( rng().range<unsigned>( mote_buffs_e::MAX ) );
-
-  switch ( mote_buff )
-  {
-    case mote_buffs_e::INFERNOS_BLESSING:
-      td->buffs.infernos_blessing->trigger();
-      break;
-    case mote_buffs_e::SHIFTING_SANDS:
-      td->buffs.shifting_sands->current_value = cache.mastery_value();
-      td->buffs.shifting_sands->trigger();
-      break;
-    case mote_buffs_e::SYMBIOTIC_BLOOM:
-    default:
-      break;
-  }
 }
 
 void evoker_t::extend_ebon( timespan_t extend )

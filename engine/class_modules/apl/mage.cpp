@@ -25,7 +25,7 @@ std::string flask( const player_t* p )
 
 std::string food( const player_t* p )
 {
-  return p->true_level >= 80 ? "everything_stew"
+  return p->true_level >= 80 ? "feast_of_the_midnight_masquerade"
        : p->true_level >= 70 ? "fated_fortune_cookie"
        : p->true_level >= 60 ? "feast_of_gluttonous_hedonism"
        : p->true_level >= 50 ? "famine_evaluator_and_snack_table"
@@ -72,7 +72,7 @@ void arcane( player_t* p )
   precombat->add_action( "variable,name=transmitter_double_on_use,op=set,value=(equipped.gladiators_badge|equipped.signet_of_the_priory|equipped.high_speakers_accretion|equipped.spymasters_web|equipped.imperfect_ascendancy_serum|equipped.quickwick_candlestick)&equipped.treacherous_transmitter" );
   precombat->add_action( "snapshot_stats" );
   precombat->add_action( "variable,name=treacherous_transmitter_precombat_cast,value=11" );
-  precombat->add_action( "use_item,name=treacherous_transmitter,if=!(talent.splintering_sorcery&variable.transmitter_double_on_use)" );
+  precombat->add_action( "use_item,name=treacherous_transmitter" );
   precombat->add_action( "mirror_image" );
   precombat->add_action( "use_item,name=imperfect_ascendancy_serum" );
   precombat->add_action( "arcane_blast,if=!talent.evocation" );
@@ -91,7 +91,7 @@ void arcane( player_t* p )
   default_->add_action( "use_items,if=prev_gcd.1.arcane_surge|prev_gcd.1.evocation|fight_remains<20|!variable.steroid_trinket_equipped", "Trinket specific use cases vary, default is just with cooldowns" );
   default_->add_action( "use_item,name=treacherous_transmitter,if=buff.spymasters_report.stack<40" );
   default_->add_action( "use_item,name=spymasters_web,if=((prev_gcd.1.arcane_surge|prev_gcd.1.evocation)&(fight_remains<80|target.health.pct<35|!talent.arcane_bombardment|(buff.spymasters_report.stack=40&fight_remains>240))|fight_remains<20)" );
-  default_->add_action( "use_item,name=high_speakers_accretion,if=(prev_gcd.1.arcane_surge|prev_gcd.1.evocation)|cooldown.evocation.remains<4|fight_remains<20" );
+  default_->add_action( "use_item,name=high_speakers_accretion,if=(prev_gcd.1.arcane_surge|prev_gcd.1.evocation|(buff.siphon_storm.up&variable.opener)|cooldown.evocation.remains<4|fight_remains<20)&(buff.spymasters_report.stack<35)" );
   default_->add_action( "use_item,name=imperfect_ascendancy_serum,if=cooldown.evocation.ready|cooldown.arcane_surge.ready|fight_remains<20" );
   default_->add_action( "use_item,name=treacherous_transmitter,if=(cooldown.evocation.remains<7&cooldown.evocation.remains)|buff.siphon_storm.remains>15|fight_remains<20" );
   default_->add_action( "do_treacherous_transmitter_task,use_off_gcd=1,if=buff.siphon_storm.up|fight_remains<20|(buff.cryptic_instructions.remains<?buff.realigning_nexus_convergence_divergence.remains<?buff.errant_manaforge_emission.remains)<3" );
@@ -112,26 +112,27 @@ void arcane( player_t* p )
   cd_opener->add_action( "wait,sec=0.05,if=prev_gcd.1.arcane_surge&time-action.touch_of_the_magi.last_used<0.015,line_cd=15" );
   cd_opener->add_action( "arcane_blast,if=buff.presence_of_mind.up" );
   cd_opener->add_action( "arcane_orb,if=talent.high_voltage&variable.opener,line_cd=10", "Use Orb for Charges on the opener if you have High Voltage as the Missiles will generate the remaining Charge you need" );
+  cd_opener->add_action( "arcane_barrage,if=buff.arcane_tempo.up&cooldown.evocation.ready&buff.arcane_tempo.remains<gcd.max*5,line_cd=11", "Barrage before Evocation if Tempo will expire" );
   cd_opener->add_action( "evocation,if=cooldown.arcane_surge.remains<(gcd.max*3)&cooldown.touch_of_the_magi.remains<(gcd.max*5)" );
-  cd_opener->add_action( "arcane_missiles,if=variable.opener,interrupt_if=tick_time>gcd.remains&buff.aether_attunement.down,interrupt_immediate=1,interrupt_global=1,chain=1,line_cd=30" );
+  cd_opener->add_action( "arcane_missiles,if=((prev_gcd.1.evocation|prev_gcd.1.arcane_surge)|variable.opener)&buff.nether_precision.down&buff.aether_attunement.down,interrupt_if=tick_time>gcd.remains&buff.aether_attunement.down,interrupt_immediate=1,interrupt_global=1,chain=1,line_cd=30" );
   cd_opener->add_action( "arcane_surge,if=cooldown.touch_of_the_magi.remains<(action.arcane_surge.execute_time+(gcd.max*(buff.arcane_charge.stack=4)))" );
 
-  spellslinger->add_action( "shifting_power,if=((buff.arcane_surge.down&buff.siphon_storm.down&debuff.touch_of_the_magi.down&cooldown.touch_of_the_magi.remains>(12+6*gcd.max))|(prev_gcd.1.arcane_barrage&talent.shifting_shards&(buff.arcane_surge.up|debuff.touch_of_the_magi.up|cooldown.evocation.remains<20)))&fight_remains>10" );
+  spellslinger->add_action( "shifting_power,if=(((((action.arcane_orb.charges=talent.charged_orb)&cooldown.arcane_orb.remains)|cooldown.touch_of_the_magi.remains<23)&buff.arcane_surge.down&buff.siphon_storm.down&debuff.touch_of_the_magi.down&cooldown.touch_of_the_magi.remains>(12+6*gcd.max))|(prev_gcd.1.arcane_barrage&talent.shifting_shards&(buff.arcane_surge.up|debuff.touch_of_the_magi.up|cooldown.evocation.remains<20)))&fight_remains>10&(buff.arcane_tempo.remains>gcd.max*2.5|buff.arcane_tempo.down)", "With Shifting Shards we can use Shifting Power whenever basically favoring cooldowns slightly, without it though we want to use it outside of cooldowns" );
   spellslinger->add_action( "cancel_buff,name=presence_of_mind,use_off_gcd=1,if=prev_gcd.1.arcane_blast&buff.presence_of_mind.stack=1", "In single target, use Presence of Mind at the very end of Touch of the Magi, then cancelaura the buff to start the cooldown, wait is to simulate the delay of hitting Presence of Mind after another spell cast" );
   spellslinger->add_action( "presence_of_mind,if=debuff.touch_of_the_magi.remains<=gcd.max&buff.nether_precision.up&active_enemies<variable.aoe_target_count&!talent.unerring_proficiency" );
   spellslinger->add_action( "wait,sec=0.05,if=time-action.presence_of_mind.last_used<0.015,line_cd=15" );
   spellslinger->add_action( "supernova,if=debuff.touch_of_the_magi.remains<=gcd.max&buff.unerring_proficiency.stack=30" );
-  spellslinger->add_action( "arcane_blast,if=((debuff.magis_spark_arcane_blast.up|buff.leydrinker.up)&!prev_gcd.1.arcane_blast&buff.nether_precision.up)" );
-  spellslinger->add_action( "arcane_barrage,if=(cooldown.touch_of_the_magi.ready)|(buff.arcane_tempo.up&buff.arcane_tempo.remains<gcd.max)|((buff.aethervision.stack=2|buff.intuition.react)&(buff.nether_precision.up|buff.clearcasting.react=0))|(action.arcane_orb.charges>0&buff.arcane_charge.stack=4&buff.clearcasting.stack=0&buff.nether_precision.down&talent.orb_barrage)", "Barrage if you have Touch ready, Tempo is about to expire, or you have a Charge refunder or an orb charge and don't have either Nether Precision or Clearcasting" );
-  spellslinger->add_action( "arcane_barrage,if=((buff.arcane_charge.stack=4&buff.nether_precision.up&active_enemies>1&(cooldown.arcane_orb.remains<gcd.max|action.arcane_orb.charges>0))|(buff.aether_attunement.up&talent.high_voltage&buff.clearcasting.react&buff.arcane_charge.stack>1&((target.health.pct<35&active_enemies=2)|active_enemies>2)))&talent.arcing_cleave", "AOE conditions for Barrage allow for Orb to enable Barrage when Nether Precision is up, Aether Attunement with High Voltage" );
-  spellslinger->add_action( "arcane_missiles,if=(buff.clearcasting.react&buff.nether_precision.down),interrupt_if=tick_time>gcd.remains&buff.aether_attunement.down,interrupt_immediate=1,interrupt_global=1,chain=1", "Missiles if you dont have Nether Precision or if you have 3 stacks to prevent munching, always clip off GCD unless you have Aether Attunement" );
-  spellslinger->add_action( "arcane_orb,if=buff.arcane_charge.stack<4" );
+  spellslinger->add_action( "arcane_blast,if=((debuff.magis_spark_arcane_blast.up|(buff.leydrinker.up&buff.arcane_charge.stack=4))&!prev_gcd.1.arcane_blast&buff.nether_precision.up)" );
+  spellslinger->add_action( "arcane_barrage,if=(cooldown.touch_of_the_magi.ready)|(buff.arcane_tempo.up&buff.arcane_tempo.remains<gcd.max)|((buff.aethervision.stack=2|buff.intuition.react)&(buff.nether_precision.up|buff.clearcasting.react=0))|((cooldown.arcane_orb.remains<gcd.max)&buff.arcane_charge.stack=4&buff.clearcasting.stack=0&buff.nether_precision.down&talent.orb_barrage&cooldown.touch_of_the_magi.remains>gcd.max*6)", "Barrage if you have Touch ready, Tempo is about to expire, or you have a Charge refunder or an orb charge and don't have either Nether Precision or Clearcasting" );
+  spellslinger->add_action( "arcane_barrage,if=((buff.arcane_charge.stack=4&buff.nether_precision.up&active_enemies>1&(cooldown.arcane_orb.remains<gcd.max|action.arcane_orb.charges>0)&cooldown.touch_of_the_magi.remains>gcd.max*6)|(buff.arcane_charge.stack=4&talent.reverberate&active_enemies>2)|(buff.aether_attunement.up&talent.high_voltage&buff.clearcasting.react&buff.arcane_charge.stack>1&((target.health.pct<35&active_enemies=2)|active_enemies>2)))&talent.arcing_cleave", "AOE conditions for Barrage allow for Orb to enable Barrage when Nether Precision is up, Aether Attunement with High Voltage" );
+  spellslinger->add_action( "arcane_missiles,if=buff.clearcasting.react&buff.nether_precision.down&((cooldown.touch_of_the_magi.remains>gcd.max*7&cooldown.arcane_surge.remains>gcd.max*7)|buff.clearcasting.react>1|(cooldown.touch_of_the_magi.remains<gcd.max*4&buff.aether_attunement.down))|fight_remains<5,interrupt_if=tick_time>gcd.remains&buff.aether_attunement.down,interrupt_immediate=1,interrupt_global=1,chain=1", "Missiles if you dont have Nether Precision and always clip off GCD unless you have Aether Attunement, save missiles before cooldowns unless you have more than 1 stack of Clearcasting" );
+  spellslinger->add_action( "arcane_orb,if=buff.arcane_charge.stack<((5-active_enemies)<?1)" );
   spellslinger->add_action( "arcane_explosion,if=(talent.reverberate|buff.arcane_charge.stack<1)&active_enemies>=4" );
   spellslinger->add_action( "arcane_blast" );
   spellslinger->add_action( "arcane_barrage" );
 
   spellslinger_aoe->add_action( "supernova,if=buff.unerring_proficiency.stack=30", "This section is only called with a variable to aggressively AOE instead of focus funnel into one target, the overall dps is slightly higher but the priority dps is much longer" );
-  spellslinger_aoe->add_action( "shifting_power,if=((buff.arcane_surge.down&buff.siphon_storm.down&debuff.touch_of_the_magi.down&cooldown.evocation.remains>15&cooldown.touch_of_the_magi.remains>10)&(cooldown.arcane_orb.remains&action.arcane_orb.charges=0)&fight_remains>10)|(prev_gcd.1.arcane_barrage&(buff.arcane_surge.up|debuff.touch_of_the_magi.up|cooldown.evocation.remains<20)&talent.shifting_shards)", "With Shifting Shards we can use Shifting Power whenever basically favoring cooldowns slightly, without it though we want to use it outside of cooldown" );
+  spellslinger_aoe->add_action( "shifting_power,if=((buff.arcane_surge.down&buff.siphon_storm.down&debuff.touch_of_the_magi.down&cooldown.evocation.remains>15&cooldown.touch_of_the_magi.remains>10)&(cooldown.arcane_orb.remains&action.arcane_orb.charges=0)&fight_remains>10)|(prev_gcd.1.arcane_barrage&(buff.arcane_surge.up|debuff.touch_of_the_magi.up|cooldown.evocation.remains<20)&talent.shifting_shards)" );
   spellslinger_aoe->add_action( "arcane_orb,if=buff.arcane_charge.stack<3" );
   spellslinger_aoe->add_action( "arcane_blast,if=((debuff.magis_spark_arcane_blast.up|buff.leydrinker.up)&!prev_gcd.1.arcane_blast)" );
   spellslinger_aoe->add_action( "arcane_barrage,if=buff.aether_attunement.up&talent.high_voltage&buff.clearcasting.react&buff.arcane_charge.stack>1", "Clearcasting is exclusively spent on Arcane Missiles in AOE and always interrupted after the global cooldown ends except for Aether Attunement" );
@@ -146,9 +147,9 @@ void arcane( player_t* p )
   sunfury->add_action( "cancel_buff,name=presence_of_mind,use_off_gcd=1,if=(prev_gcd.1.arcane_blast&buff.presence_of_mind.stack=1)|active_enemies<4" );
   sunfury->add_action( "presence_of_mind,if=debuff.touch_of_the_magi.remains<=gcd.max&buff.nether_precision.up&active_enemies<4" );
   sunfury->add_action( "wait,sec=0.05,if=time-action.presence_of_mind.last_used<0.015,line_cd=15" );
-  sunfury->add_action( "arcane_barrage,if=(buff.arcane_charge.stack=4&buff.burden_of_power.down&buff.nether_precision.up&active_enemies>2&((talent.arcane_bombardment&target.health.pct<35)|active_enemies>4)&talent.arcing_cleave&((talent.high_voltage&buff.clearcasting.react)|(cooldown.arcane_orb.remains<gcd.max|action.arcane_orb.charges>0)))|(buff.aether_attunement.up&talent.high_voltage&buff.clearcasting.react&buff.arcane_charge.stack>1&active_enemies>2&(target.health.pct<35|!talent.arcane_bombardment|active_enemies>4))|(active_enemies>2&(buff.aethervision.stack=2|buff.glorious_incandescence.up|buff.intuition.react)&(buff.nether_precision.up|(target.health.pct<35&talent.arcane_bombardment&buff.clearcasting.react=0)))", "AOE Barrage is optimized for funnel at the cost of some overall AOE, tries to make sure you have Clearcasting if you have High Voltage or an Orb charge ready, second condition covers Aether Attunement optimizations with High Voltage, last condition is to Barrage anytime you have a refunder and are in execute in AOE." );
+  sunfury->add_action( "arcane_barrage,if=(buff.arcane_charge.stack=4&buff.burden_of_power.down&buff.nether_precision.up&active_enemies>2&((talent.arcane_bombardment&target.health.pct<35)|active_enemies>4)&talent.arcing_cleave&((talent.high_voltage&buff.clearcasting.react)|(cooldown.arcane_orb.remains<gcd.max|action.arcane_orb.charges>0)))|(buff.aether_attunement.up&talent.high_voltage&buff.clearcasting.react&buff.arcane_charge.stack>1&active_enemies>2&(target.health.pct<35|!talent.arcane_bombardment|active_enemies>4))|(active_enemies>2&(buff.aethervision.stack=2|buff.glorious_incandescence.up|buff.intuition.react)&(buff.nether_precision.up|(target.health.pct<35&talent.arcane_bombardment&buff.clearcasting.react=0)))", "AOE Barrage is optimized for funnel, tries to make sure you have Clearcasting if you have High Voltage or an Orb charge ready, second condition covers Aether Attunement optimizations with High Voltage, last condition is to Barrage anytime you have a refunder and are in execute in AOE." );
   sunfury->add_action( "arcane_orb,if=buff.arcane_charge.stack<2&buff.arcane_soul.down&(!talent.high_voltage|buff.clearcasting.react=0)", "Orb if you don't have High Voltage and a Clearcasting in AOE" );
-  sunfury->add_action( "arcane_missiles,if=buff.nether_precision.down&buff.clearcasting.react&(buff.arcane_soul.up&buff.arcane_soul.remains>gcd.max*(4-buff.clearcasting.stack)),interrupt_if=tick_time>gcd.remains,interrupt_immediate=1,interrupt_global=1,chain=1", "Soul changes missile priority a bit and encourages clipping Aether Attunement" );
+  sunfury->add_action( "arcane_missiles,if=buff.nether_precision.down&buff.clearcasting.react&(buff.arcane_soul.up&buff.arcane_soul.remains>gcd.max*(4-buff.clearcasting.stack)),interrupt_if=tick_time>gcd.remains,interrupt_immediate=1,interrupt_global=1,chain=1", "Soul changes missile priority a bit and allows for clipping Aether Attunement" );
   sunfury->add_action( "arcane_barrage,if=(buff.intuition.react|buff.aethervision.stack=2|buff.glorious_incandescence.up)&((target.health.pct<35&talent.arcane_bombardment)|(mana.pct<70&talent.enlightened&buff.arcane_surge.down&active_enemies<3)|buff.glorious_incandescence.up)&(buff.nether_precision.up|buff.clearcasting.react=0)&cooldown.touch_of_the_magi.remains>6|(buff.arcane_soul.up&((buff.clearcasting.react<3)|buff.arcane_soul.remains<gcd.max))|(buff.arcane_charge.stack=4&cooldown.touch_of_the_magi.ready)", "Barrage when you can restore charges, overlap buffs as much as possible, if you have no way to generate Nether Precision you can also send if under Enlightened threshold or during execute" );
   sunfury->add_action( "arcane_missiles,if=buff.clearcasting.react&((buff.nether_precision.down|buff.clearcasting.react=3|(talent.high_voltage&buff.arcane_charge.stack<3))),interrupt_if=tick_time>gcd.remains&buff.aether_attunement.down,interrupt_immediate=1,interrupt_global=1,chain=1", "Missiles when it won't impact various Barrage conditions, interrupt the channel immediately after the GCD if you do not have Aether Attunement" );
   sunfury->add_action( "presence_of_mind,if=(buff.arcane_charge.stack=3|buff.arcane_charge.stack=2)&active_enemies>=3" );
@@ -212,7 +213,7 @@ void fire( player_t* p )
   default_->add_action( "potion,if=buff.potion.duration>variable.time_to_combustion+buff.combustion.duration" );
   default_->add_action( "variable,name=shifting_power_before_combustion,value=variable.time_to_combustion>cooldown.shifting_power.remains", "Variable that estimates whether Shifting Power will be used before the next Combustion." );
   default_->add_action( "variable,name=item_cutoff_active,value=(variable.time_to_combustion<variable.on_use_cutoff|buff.combustion.remains>variable.skb_duration&!cooldown.item_cd_1141.remains)&((trinket.1.has_cooldown&trinket.1.cooldown.remains<variable.on_use_cutoff)+(trinket.2.has_cooldown&trinket.2.cooldown.remains<variable.on_use_cutoff)>1)" );
-  default_->add_action( "use_item,effect_name=spymasters_web,if=(buff.combustion.remains>10&fight_remains<80)" );
+  default_->add_action( "use_item,effect_name=spymasters_web,if=(trinket.1.has_use&trinket.2.has_use&buff.combustion.remains>10&fight_remains<80)|((buff.combustion.remains>10&buff.spymasters_report.stack>35&fight_remains<60)|fight_remains<25)" );
   default_->add_action( "use_item,name=treacherous_transmitter,if=variable.time_to_combustion<10|fight_remains<25", "The War Within S1 On-Use items with special use timings" );
   default_->add_action( "do_treacherous_transmitter_task,use_off_gcd=1,if=buff.combustion.up|fight_remains<20" );
   default_->add_action( "use_item,name=imperfect_ascendancy_serum,if=variable.time_to_combustion<3" );
@@ -230,7 +231,7 @@ void fire( player_t* p )
   default_->add_action( "ice_nova,if=!scorch_execute.active" );
   default_->add_action( "scorch,if=buff.combustion.down" );
 
-  active_talents->add_action( "meteor,if=buff.combustion.up|(buff.sun_kings_blessing.max_stack-buff.sun_kings_blessing.stack>4|variable.time_to_combustion<=0|buff.combustion.remains>travel_time|!talent.sun_kings_blessing&(cooldown.meteor.duration<variable.time_to_combustion&fight_remains<variable.time_to_combustion))" );
+  active_talents->add_action( "meteor,if=(buff.combustion.up&buff.combustion.remains<cast_time)|(buff.sun_kings_blessing.max_stack-buff.sun_kings_blessing.stack>4|variable.time_to_combustion<=0|buff.combustion.remains>travel_time|!talent.sun_kings_blessing&(cooldown.meteor.duration<variable.time_to_combustion&fight_remains<variable.time_to_combustion))" );
   active_talents->add_action( "dragons_breath,if=talent.alexstraszas_fury&(buff.combustion.down&!buff.hot_streak.react)&(buff.feel_the_burn.up|time>15)&(!improved_scorch.active)", "With Alexstrasza's Fury when Combustion is not active, Dragon's Breath should be used to convert Heating Up to a Hot Streak." );
 
   combustion_cooldowns->add_action( "potion" );
@@ -260,6 +261,7 @@ void fire( player_t* p )
   combustion_phase->add_action( "pyroblast,if=buff.hyperthermia.react" );
   combustion_phase->add_action( "pyroblast,if=buff.hot_streak.react&buff.combustion.up" );
   combustion_phase->add_action( "pyroblast,if=prev_gcd.1.scorch&buff.heating_up.react&active_enemies<variable.combustion_flamestrike&buff.combustion.up" );
+  combustion_phase->add_action( "scorch,if=talent.sun_kings_blessing&improved_scorch.active&debuff.improved_scorch.remains<3*gcd.max" );
   combustion_phase->add_action( "flamestrike,if=buff.fury_of_the_sun_king.up&buff.fury_of_the_sun_king.remains>cast_time&active_enemies>=variable.skb_flamestrike&buff.fury_of_the_sun_king.expiration_delay_remains=0", "Spend Fury of the Sun King procs inside of combustion." );
   combustion_phase->add_action( "pyroblast,if=buff.fury_of_the_sun_king.up&buff.fury_of_the_sun_king.remains>cast_time&buff.fury_of_the_sun_king.expiration_delay_remains=0" );
   combustion_phase->add_action( "fireball,if=buff.frostfire_empowerment.up&!buff.hot_streak.react&!buff.excess_frost.up" );
@@ -289,12 +291,12 @@ void fire( player_t* p )
   standard_rotation->add_action( "fireball,if=buff.hot_streak.up&!buff.frostfire_empowerment.up&buff.hyperthermia.down&!cooldown.shifting_power.ready&cooldown.phoenix_flames.charges<1&!scorch_execute.active&!prev_gcd.1.fireball,line_cd=2*gcd.max", "When resources are low, fish for Hot Streaks." );
   standard_rotation->add_action( "pyroblast,if=(buff.hyperthermia.react|buff.hot_streak.react&(buff.hot_streak.remains<action.fireball.execute_time)|buff.hot_streak.react&(hot_streak_spells_in_flight|firestarter.active|talent.call_of_the_sun_king&action.phoenix_flames.charges)|buff.hot_streak.react&scorch_execute.active)" );
   standard_rotation->add_action( "flamestrike,if=active_enemies>=variable.skb_flamestrike&buff.fury_of_the_sun_king.up&buff.fury_of_the_sun_king.expiration_delay_remains=0" );
-  standard_rotation->add_action( "scorch,if=improved_scorch.active&debuff.improved_scorch.remains<action.pyroblast.cast_time+5*gcd.max&buff.fury_of_the_sun_king.up&!action.scorch.in_flight" );
+  standard_rotation->add_action( "scorch,if=improved_scorch.active&((talent.unleashed_inferno&debuff.improved_scorch.remains<action.pyroblast.cast_time+5*gcd.max)|(talent.sun_kings_blessing&debuff.improved_scorch.remains<4*gcd.max))&buff.fury_of_the_sun_king.up&!action.scorch.in_flight" );
   standard_rotation->add_action( "pyroblast,if=buff.fury_of_the_sun_king.up&buff.fury_of_the_sun_king.expiration_delay_remains=0" );
   standard_rotation->add_action( "fire_blast,use_off_gcd=1,use_while_casting=1,if=!firestarter.active&(!variable.fire_blast_pooling|talent.spontaneous_combustion)&buff.fury_of_the_sun_king.down&(((action.fireball.executing&(action.fireball.execute_remains<0.5|!talent.hyperthermia)|action.pyroblast.executing&(action.pyroblast.execute_remains<0.5))&buff.heating_up.react)|(scorch_execute.active&(!improved_scorch.active|debuff.improved_scorch.stack=debuff.improved_scorch.max_stack|full_recharge_time<3)&(buff.heating_up.react&!action.scorch.executing|!buff.hot_streak.react&!buff.heating_up.react&action.scorch.executing&!hot_streak_spells_in_flight)))", "During the standard rotation, only use Fire Blasts when they are not being pooled for Combustion. Use Fire Blast either during a Fireball/Pyroblast cast when Heating Up is active or during execute with Searing Touch." );
-  standard_rotation->add_action( "fire_blast,use_off_gcd=1,use_while_casting=1,if=!firestarter.active&(!variable.fire_blast_pooling|talent.spontaneous_combustion)&buff.fury_of_the_sun_king.down&(buff.heating_up.up&hot_streak_spells_in_flight<1&(prev_gcd.1.phoenix_flames|prev_gcd.1.scorch))|(((buff.bloodlust.up&charges_fractional>1.5)|charges_fractional>2.5|buff.feel_the_burn.remains<0.5|full_recharge_time*1-(0.5*cooldown.shifting_power.ready)<buff.hyperthermia.duration)&buff.heating_up.react)", "We will munch Fireblasts during Hyperthermia, and use them after instant casts in filler." );
+  standard_rotation->add_action( "fire_blast,use_off_gcd=1,use_while_casting=1,if=!firestarter.active&((!variable.fire_blast_pooling&talent.unleashed_inferno)|talent.spontaneous_combustion)&buff.fury_of_the_sun_king.down&(buff.heating_up.up&hot_streak_spells_in_flight<1&(prev_gcd.1.phoenix_flames|prev_gcd.1.scorch))|(((buff.bloodlust.up&charges_fractional>1.5)|charges_fractional>2.5|buff.feel_the_burn.remains<0.5|full_recharge_time*1-(0.5*cooldown.shifting_power.ready)<buff.hyperthermia.duration)&buff.heating_up.react)", "We will munch Fireblasts during Hyperthermia, and use them after instant casts in filler." );
   standard_rotation->add_action( "pyroblast,if=prev_gcd.1.scorch&buff.heating_up.react&scorch_execute.active&active_enemies<variable.hot_streak_flamestrike" );
-  standard_rotation->add_action( "scorch,if=improved_scorch.active&debuff.improved_scorch.remains<gcd.max" );
+  standard_rotation->add_action( "scorch,if=improved_scorch.active&debuff.improved_scorch.remains<4*gcd.max" );
   standard_rotation->add_action( "fireball,if=buff.frostfire_empowerment.up&!buff.hot_streak.react&!buff.excess_frost.up" );
   standard_rotation->add_action( "scorch,if=buff.heat_shimmer.react&(talent.scald|talent.improved_scorch)&active_enemies<variable.combustion_flamestrike" );
   standard_rotation->add_action( "phoenix_flames,if=!buff.hot_streak.up&(hot_streak_spells_in_flight<1&(!prev_gcd.1.fireball|(buff.heating_up.down&buff.hot_streak.down)))|(hot_streak_spells_in_flight<2&buff.flames_fury.react)" );
@@ -318,7 +320,6 @@ void frost( player_t* p )
   action_priority_list_t* cleave_ff = p->get_action_priority_list( "cleave_ff" );
   action_priority_list_t* cleave_ss = p->get_action_priority_list( "cleave_ss" );
   action_priority_list_t* movement = p->get_action_priority_list( "movement" );
-  action_priority_list_t* st_aoebuild = p->get_action_priority_list( "st_aoebuild" );
   action_priority_list_t* st_ff = p->get_action_priority_list( "st_ff" );
   action_priority_list_t* st_ss = p->get_action_priority_list( "st_ss" );
 
@@ -327,8 +328,7 @@ void frost( player_t* p )
   precombat->add_action( "augmentation" );
   precombat->add_action( "arcane_intellect" );
   precombat->add_action( "snapshot_stats" );
-  precombat->add_action( "variable,name=st_aoebuild,value=talent.splinterstorm&!(talent.cold_front&talent.slick_ice&talent.deaths_chill&talent.frozen_touch)|talent.frostfire_bolt&!(talent.deep_shatter&talent.slick_ice&talent.deaths_chill)" );
-  precombat->add_action( "variable,name=st_ff,value=talent.frostfire_bolt" );
+  precombat->add_action( "variable,name=boltspam,value=talent.splinterstorm&talent.cold_front&talent.slick_ice&talent.deaths_chill&talent.frozen_touch|talent.frostfire_bolt&talent.deep_shatter&talent.slick_ice&talent.deaths_chill" );
   precombat->add_action( "blizzard,if=active_enemies>=2&talent.ice_caller&!talent.fractured_frost|active_enemies>=4" );
   precombat->add_action( "frostbolt,if=active_enemies<=3" );
 
@@ -338,9 +338,8 @@ void frost( player_t* p )
   default_->add_action( "run_action_list,name=aoe_ss,if=talent.splinterstorm&active_enemies>=3" );
   default_->add_action( "run_action_list,name=cleave_ff,if=talent.frostfire_bolt&active_enemies>=2&active_enemies<=3" );
   default_->add_action( "run_action_list,name=cleave_ss,if=talent.splinterstorm&active_enemies=2" );
-  default_->add_action( "run_action_list,name=st_aoebuild,if=variable.st_aoebuild" );
-  default_->add_action( "run_action_list,name=st_ff,if=variable.st_ff" );
-  default_->add_action( "run_action_list,name=st_ss" );
+  default_->add_action( "run_action_list,name=st_ff,if=talent.frostfire_bolt" );
+  default_->add_action( "run_action_list,name=st_ss,if=talent.splinterstorm" );
 
   aoe_ff->add_action( "cone_of_cold,if=talent.coldest_snap&cooldown.frozen_orb.remains>4&(prev_gcd.1.comet_storm|prev_gcd.1.frozen_orb&!talent.comet_storm|cooldown.comet_storm.remains>15&!talent.frostfire_bolt)" );
   aoe_ff->add_action( "frozen_orb,if=cooldown_react&((!prev_gcd.1.cone_of_cold|!talent.isothermic_core)&(!prev_gcd.1.glacial_spike|!freezable))" );
@@ -361,32 +360,34 @@ void frost( player_t* p )
   aoe_ff->add_action( "frostbolt" );
   aoe_ff->add_action( "call_action_list,name=movement" );
 
-  aoe_ss->add_action( "cone_of_cold,if=talent.coldest_snap&cooldown.frozen_orb.remains&(prev_gcd.1.comet_storm|prev_gcd.1.frozen_orb&cooldown.comet_storm.remains)&(!talent.deaths_chill|buff.icy_veins.remains<8|buff.deaths_chill.stack>=12)" );
+  aoe_ss->add_action( "cone_of_cold,if=talent.coldest_snap&!action.frozen_orb.cooldown_react&(prev_gcd.1.comet_storm|prev_gcd.1.frozen_orb&cooldown.comet_storm.remains>5)&(!talent.deaths_chill|buff.icy_veins.remains<8|buff.deaths_chill.stack>=12)" );
   aoe_ss->add_action( "freeze,if=freezable&debuff.frozen.down&prev_gcd.1.glacial_spike" );
   aoe_ss->add_action( "flurry,if=cooldown_react&remaining_winters_chill=0&prev_gcd.1.glacial_spike" );
+  aoe_ss->add_action( "ice_nova,if=active_enemies<5&freezable&prev_gcd.1.glacial_spike&remaining_winters_chill=0&debuff.winters_chill.down|active_enemies>=5&time-action.cone_of_cold.last_used<6&time-action.cone_of_cold.last_used>6-gcd.max" );
   aoe_ss->add_action( "frozen_orb,if=cooldown_react" );
   aoe_ss->add_action( "frostbolt,if=talent.deaths_chill&buff.icy_veins.remains>8&(buff.deaths_chill.stack<9|buff.deaths_chill.stack=9&!action.frostbolt.in_flight)" );
   aoe_ss->add_action( "comet_storm" );
   aoe_ss->add_action( "blizzard" );
-  aoe_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10" );
-  aoe_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill)" );
-  aoe_ss->add_action( "ice_lance,if=buff.fingers_of_frost.react" );
+  aoe_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10&(fight_remains+10>cooldown.icy_veins.remains)" );
+  aoe_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill|active_enemies<5&freezable&cooldown.ice_nova.ready&!buff.fingers_of_frost.react)" );
+  aoe_ss->add_action( "ice_lance,if=buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike|remaining_winters_chill" );
   aoe_ss->add_action( "flurry,if=cooldown_react&remaining_winters_chill=0" );
-  aoe_ss->add_action( "ice_nova,if=freezable|active_enemies>=8" );
   aoe_ss->add_action( "frostbolt" );
   aoe_ss->add_action( "call_action_list,name=movement" );
 
   cds->add_action( "use_item,name=imperfect_ascendancy_serum,if=buff.icy_veins.remains>19|fight_remains<25" );
-  cds->add_action( "use_item,name=spymasters_web,if=fight_remains<25|(fight_remains<100|buff.spymasters_report.stack>35)&(!talent.deaths_chill&buff.icy_veins.remains>19|talent.deaths_chill&buff.icy_veins.remains>15&buff.icy_veins.remains<20)" );
-  cds->add_action( "potion,if=prev_off_gcd.icy_veins|fight_remains<60" );
+  cds->add_action( "use_item,name=treacherous_transmitter,if=equipped.spymasters_web&(fight_remains<50|cooldown.icy_veins.remains<12|cooldown.icy_veins.remains<22&cooldown.shifting_power.remains<10)|!equipped.spymasters_web&(fight_remains<30|prev_off_gcd.icy_veins)" );
+  cds->add_action( "do_treacherous_transmitter_task,if=fight_remains<18|(buff.cryptic_instructions.remains<?buff.realigning_nexus_convergence_divergence.remains<?buff.errant_manaforge_emission.remains)<(action.shifting_power.execute_time+1*talent.ray_of_frost)" );
+  cds->add_action( "use_item,name=burst_of_knowledge,if=buff.icy_veins.remains<21|fight_remains<25" );
+  cds->add_action( "use_item,name=spymasters_web,if=fight_remains<22|buff.icy_veins.remains<19&(fight_remains<105|buff.spymasters_report.stack>=32)&(buff.icy_veins.remains>15|equipped.treacherous_transmitter&buff.icy_veins.remains>9)" );
+  cds->add_action( "potion,if=fight_remains<35|buff.icy_veins.remains>10&(fight_remains>315|cooldown.icy_veins.remains+12>fight_remains)" );
   cds->add_action( "flurry,if=time=0&active_enemies<=2" );
-  cds->add_action( "icy_veins" );
+  cds->add_action( "icy_veins,if=buff.icy_veins.remains<gcd.max*2" );
   cds->add_action( "use_items" );
   cds->add_action( "invoke_external_buff,name=power_infusion,if=buff.power_infusion.down" );
   cds->add_action( "invoke_external_buff,name=blessing_of_summer,if=buff.blessing_of_summer.down" );
   cds->add_action( "blood_fury" );
-  cds->add_action( "berserking" );
-  cds->add_action( "lights_judgment" );
+  cds->add_action( "berserking,if=buff.icy_veins.remains>10&buff.icy_veins.remains<15|fight_remains<15" );
   cds->add_action( "fireblood" );
   cds->add_action( "ancestral_call" );
 
@@ -405,15 +406,16 @@ void frost( player_t* p )
   cleave_ff->add_action( "call_action_list,name=movement" );
 
   cleave_ss->add_action( "comet_storm,if=prev_gcd.1.flurry&(buff.icy_veins.down)" );
+  cleave_ss->add_action( "freeze,if=freezable&prev_gcd.1.glacial_spike" );
   cleave_ss->add_action( "flurry,if=cooldown_react&remaining_winters_chill=0&debuff.winters_chill.down&(prev_gcd.1.frostbolt|prev_gcd.1.glacial_spike)" );
   cleave_ss->add_action( "flurry,target_if=min:debuff.winters_chill.stack,if=cooldown_react&prev_gcd.1.glacial_spike" );
-  cleave_ss->add_action( "freeze,if=freezable&debuff.frozen.down&(!talent.glacial_spike|prev_gcd.1.glacial_spike)" );
-  cleave_ss->add_action( "frozen_orb,if=cooldown_react" );
-  cleave_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10&cooldown.flurry.remains&(fight_remains>cooldown.icy_veins.remains-6)" );
-  cleave_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill|freezable&cooldown.freeze.ready)" );
+  cleave_ss->add_action( "ice_nova,if=freezable&!prev_off_gcd.freeze&prev_gcd.1.glacial_spike&remaining_winters_chill=0&debuff.winters_chill.down" );
+  cleave_ss->add_action( "frozen_orb,if=cooldown_react&(cooldown.icy_veins.remains>22|buff.icy_veins.up)" );
+  cleave_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10&!action.flurry.cooldown_react&(buff.icy_veins.down|buff.icy_veins.remains>10)&(fight_remains+10>cooldown.icy_veins.remains)" );
+  cleave_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill|freezable&cooldown.ice_nova.ready&!buff.fingers_of_frost.react)" );
   cleave_ss->add_action( "ray_of_frost,if=remaining_winters_chill&buff.icy_veins.down" );
-  cleave_ss->add_action( "frostbolt,if=talent.deaths_chill&(!talent.freezing_rain&buff.icy_veins.remains>8&buff.deaths_chill.stack<=13|talent.freezing_rain&buff.icy_veins.remains>22)" );
-  cleave_ss->add_action( "ice_lance,if=buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike" );
+  cleave_ss->add_action( "frostbolt,if=talent.deaths_chill&buff.icy_veins.remains>8&buff.deaths_chill.stack<=(8+4*talent.slick_ice)" );
+  cleave_ss->add_action( "ice_lance,if=buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike|!variable.boltspam&remaining_winters_chill" );
   cleave_ss->add_action( "frostbolt" );
   cleave_ss->add_action( "call_action_list,name=movement" );
 
@@ -425,35 +427,28 @@ void frost( player_t* p )
   movement->add_action( "fire_blast" );
   movement->add_action( "ice_lance" );
 
-  st_aoebuild->add_action( "comet_storm,if=prev_gcd.1.flurry&(buff.icy_veins.down|talent.frostfire_bolt)" );
-  st_aoebuild->add_action( "flurry,if=cooldown_react&(buff.icicles.react<5|talent.splinterstorm)&(remaining_winters_chill=0&debuff.winters_chill.down&(prev_gcd.1.frostbolt|prev_gcd.1.frostfire_bolt|prev_gcd.1.glacial_spike)|buff.excess_frost.react)" );
-  st_aoebuild->add_action( "frozen_orb,if=cooldown_react&(talent.splinterstorm|(!talent.ray_of_frost|buff.fingers_of_frost.down&cooldown.ray_of_frost.remains&buff.icicles.react<5))" );
-  st_aoebuild->add_action( "shifting_power,if=(cooldown.icy_veins.remains>10&cooldown.flurry.remains&(fight_remains>cooldown.icy_veins.remains-6)|talent.frostfire_bolt)&(talent.splinterstorm|(buff.icy_veins.down|!talent.deaths_chill)&cooldown.frozen_orb.remains>10&(!talent.comet_storm|cooldown.comet_storm.remains>10)&(!talent.ray_of_frost|cooldown.ray_of_frost.remains>10)&buff.icicles.react<5)" );
-  st_aoebuild->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill)" );
-  st_aoebuild->add_action( "ray_of_frost,if=remaining_winters_chill&talent.frostfire_bolt|remaining_winters_chill=1" );
-  st_aoebuild->add_action( "ice_lance,if=buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike|remaining_winters_chill" );
-  st_aoebuild->add_action( "frostbolt" );
-  st_aoebuild->add_action( "call_action_list,name=movement" );
-
-  st_ff->add_action( "comet_storm,if=prev_gcd.1.flurry|prev_gcd.1.cone_of_cold" );
-  st_ff->add_action( "flurry,if=cooldown_react&buff.icicles.react<5&remaining_winters_chill=0&(debuff.winters_chill.down|buff.brain_freeze.react|buff.excess_frost.react)" );
-  st_ff->add_action( "cone_of_cold,if=talent.coldest_snap&prev_gcd.1.comet_storm&active_enemies>=3" );
+  st_ff->add_action( "comet_storm,if=prev_gcd.1.flurry" );
+  st_ff->add_action( "flurry,if=variable.boltspam&(cooldown_react&buff.icicles.react<5&remaining_winters_chill=0&(debuff.winters_chill.down|buff.brain_freeze.react|buff.excess_frost.react))" );
+  st_ff->add_action( "flurry,if=!variable.boltspam&(cooldown_react&buff.icicles.react<5&(remaining_winters_chill=0&debuff.winters_chill.down&(prev_gcd.1.frostfire_bolt|prev_gcd.1.glacial_spike)|buff.excess_frost.react))" );
   st_ff->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill)" );
-  st_ff->add_action( "ray_of_frost,if=remaining_winters_chill&(buff.icy_veins.remains<14|buff.spymasters_web.up)" );
-  st_ff->add_action( "frozen_orb" );
+  st_ff->add_action( "ray_of_frost,if=remaining_winters_chill&(!variable.boltspam|buff.icy_veins.remains<14|buff.spymasters_web.up)" );
+  st_ff->add_action( "frozen_orb,if=variable.boltspam|buff.fingers_of_frost.down" );
   st_ff->add_action( "shifting_power,if=(buff.icy_veins.down|!talent.deaths_chill)&cooldown.frozen_orb.remains>10&(!talent.comet_storm|cooldown.comet_storm.remains>10)&(!talent.ray_of_frost|cooldown.ray_of_frost.remains>10)" );
-  st_ff->add_action( "ice_lance,if=buff.excess_fire.react&remaining_winters_chill=2|remaining_winters_chill=0&debuff.winters_chill.down&buff.fingers_of_frost.react" );
+  st_ff->add_action( "ice_lance,if=variable.boltspam&(buff.excess_fire.react&remaining_winters_chill=2|remaining_winters_chill=0&debuff.winters_chill.down&buff.fingers_of_frost.react)" );
+  st_ff->add_action( "ice_lance,if=!variable.boltspam&(buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike|remaining_winters_chill)" );
   st_ff->add_action( "frostbolt" );
   st_ff->add_action( "call_action_list,name=movement" );
 
   st_ss->add_action( "comet_storm,if=prev_gcd.1.flurry&buff.icy_veins.down" );
   st_ss->add_action( "flurry,if=cooldown_react&remaining_winters_chill=0&debuff.winters_chill.down&(prev_gcd.1.frostbolt|prev_gcd.1.glacial_spike)" );
-  st_ss->add_action( "frozen_orb,if=cooldown_react" );
-  st_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10&cooldown.flurry.remains&(fight_remains>cooldown.icy_veins.remains-6)" );
-  st_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill)" );
-  st_ss->add_action( "ray_of_frost,if=remaining_winters_chill&buff.icy_veins.down" );
-  st_ss->add_action( "frostbolt,if=buff.icy_veins.remains>8&buff.deaths_chill.stack<8" );
-  st_ss->add_action( "ice_lance,if=remaining_winters_chill=2|remaining_winters_chill&action.flurry.cooldown_react" );
+  st_ss->add_action( "frozen_orb,if=cooldown_react&(cooldown.icy_veins.remains>22|buff.icy_veins.up)" );
+  st_ss->add_action( "glacial_spike,if=buff.icicles.react=5&(action.flurry.cooldown_react|remaining_winters_chill|cooldown.flurry.remains<action.glacial_spike.execute_time&cooldown.flurry.remains>0)" );
+  st_ss->add_action( "ray_of_frost,if=variable.boltspam&remaining_winters_chill&buff.icy_veins.down" );
+  st_ss->add_action( "ray_of_frost,if=!variable.boltspam&remaining_winters_chill=1" );
+  st_ss->add_action( "shifting_power,if=cooldown.icy_veins.remains>10&!action.flurry.cooldown_react&(variable.boltspam|buff.icy_veins.down|buff.icy_veins.remains>10)&(fight_remains+10>cooldown.icy_veins.remains)" );
+  st_ss->add_action( "frostbolt,if=variable.boltspam&buff.icy_veins.remains>8&buff.deaths_chill.stack<8" );
+  st_ss->add_action( "ice_lance,if=variable.boltspam&(remaining_winters_chill=2|remaining_winters_chill&action.flurry.cooldown_react)" );
+  st_ss->add_action( "ice_lance,if=!variable.boltspam&(buff.fingers_of_frost.react&!prev_gcd.1.glacial_spike|remaining_winters_chill)" );
   st_ss->add_action( "frostbolt" );
   st_ss->add_action( "call_action_list,name=movement" );
 }
