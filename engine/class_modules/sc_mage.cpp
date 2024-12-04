@@ -1896,6 +1896,7 @@ struct mage_spell_t : public spell_t
     bool chill = false;
     bool clearcasting = false;
     bool from_the_ashes = false;
+    bool frostfire_infusion = true;
     bool frostfire_mastery = true;
     bool ignite = false;
     bool overflowing_energy = true;
@@ -2281,7 +2282,7 @@ public:
 
     if ( dbc::has_common_school( get_school(), SCHOOL_FROSTFIRE ) && s->result_type == result_amount_type::DMG_DIRECT )
     {
-      if ( p()->rppm.frostfire_infusion->trigger() )
+      if ( triggers.frostfire_infusion && p()->rppm.frostfire_infusion->trigger() )
         p()->action.frostfire_infusion->execute_on_target( s->target );
       p()->buffs.frostfire_empowerment->trigger();
     }
@@ -3068,25 +3069,26 @@ struct hot_streak_spell_t : public custom_state_spell_t<fire_mage_spell_t, hot_s
       trigger_tracking_buff( p()->buffs.sun_kings_blessing, p()->buffs.fury_of_the_sun_king );
       p()->trigger_lit_fuse();
       p()->trigger_mana_cascade();
+    }
 
-      // TODO: Test the proc chance and whether this works with Hyperthermia and Lit Fuse.
-      if ( p()->cooldowns.pyromaniac->up() && p()->accumulated_rng.pyromaniac->trigger() )
+    // TODO: Test the proc chance and whether this works with Hyperthermia and Lit Fuse.
+    // TODO: Pyromaniac seems to proc regardless of Hot Streak state
+    if ( ( last_hot_streak || p()->bugs ) && p()->cooldowns.pyromaniac->up() && p()->accumulated_rng.pyromaniac->trigger() )
+    {
+      p()->cooldowns.pyromaniac->start( p()->talents.pyromaniac->internal_cooldown() );
+
+      trigger_tracking_buff( p()->buffs.sun_kings_blessing, p()->buffs.fury_of_the_sun_king );
+      p()->trigger_lit_fuse();
+      p()->trigger_spellfire_spheres();
+      p()->trigger_mana_cascade();
+
+      assert( pyromaniac_action );
+      // Pyromaniac Pyroblast actually casts on the Mage's target, but that is probably a bug.
+      make_event( *sim, 500_ms, [ this, t = target ]
       {
-        p()->cooldowns.pyromaniac->start( p()->talents.pyromaniac->internal_cooldown() );
-
-        trigger_tracking_buff( p()->buffs.sun_kings_blessing, p()->buffs.fury_of_the_sun_king );
-        p()->trigger_lit_fuse();
-        p()->trigger_spellfire_spheres();
-        p()->trigger_mana_cascade();
-
-        assert( pyromaniac_action );
-        // Pyromaniac Pyroblast actually casts on the Mage's target, but that is probably a bug.
-        make_event( *sim, 500_ms, [ this, t = target ]
-        {
-          pyromaniac_action->execute_on_target( t );
-          p()->buffs.sparking_cinders->decrement();
-        } );
-      }
+        pyromaniac_action->execute_on_target( t );
+        p()->buffs.sparking_cinders->decrement();
+      } );
     }
   }
 };
@@ -6391,6 +6393,7 @@ struct scorch_t final : public custom_state_spell_t<fire_mage_spell_t, scorch_da
     parse_options( options_str );
     triggers.hot_streak = triggers.calefaction = triggers.unleashed_inferno = triggers.kindling = TT_MAIN_TARGET;
     affected_by.unleashed_inferno = triggers.ignite = triggers.from_the_ashes = true;
+    triggers.frostfire_infusion = false;
     // There is a tiny delay between Scorch dealing damage and Hot Streak
     // state being updated. Here we model it as a tiny travel time.
     travel_delay = p->options.scorch_delay.total_seconds();
